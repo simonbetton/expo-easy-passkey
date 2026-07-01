@@ -1,0 +1,141 @@
+---
+title: Releasing
+description: Maintainer steps for versioning, publishing, and recovery
+---
+
+This page is for maintainers publishing Expo Easy Passkey. App teams installing the package usually only need `Install`, `Platforms`, and `Device E2E`.
+
+## Release model
+
+`expo-easy-passkey` is the only package published to npm. It contains the public TypeScript API, the Expo native module, the config plugin, iOS and Android native code, and generated binding files used during release validation.
+
+The repository has internal source boundaries that are not npm package boundaries:
+
+- `packages/module` is the released package.
+- `crates/passkey-core` and `crates/passkey-ffi` are internal Rust crates used for tests, fixtures, and generated native bindings.
+- `apps/example`, `apps/docs`, and `tooling/*` are private workspaces.
+
+Changesets handles package versioning and changelog entries. During the alpha stream, Changesets runs in prerelease mode with the `alpha` tag, so the first release PR should version `expo-easy-passkey` as `0.1.0-alpha.0`.
+
+## Contributors
+
+Every user-facing change should include a changeset:
+
+```sh
+pnpm changeset
+```
+
+Choose the semver intent for `expo-easy-passkey`:
+
+- `patch` for fixes and small documentation corrections that affect published package users.
+- `minor` for additive APIs, native platform support, or meaningful behavior improvements.
+- `major` for breaking public API or config changes.
+
+For the alpha stream, Changesets converts that intent into an alpha prerelease version. Commit the generated `.changeset/*.md` file with the code change.
+
+Before merging a feature PR, CI should pass the repository verification jobs, including TypeScript, Rust, binding freshness, Android compile, and iOS compile.
+
+## Maintainers
+
+After feature PRs land on `main`, the release workflow runs. If there are pending changesets, it opens or updates a Changesets release PR.
+
+Review the release PR before merging it:
+
+- Confirm only `expo-easy-passkey` is versioned.
+- Confirm `packages/module/CHANGELOG.md` describes the release clearly.
+- Confirm package metadata still points to the single installable package.
+- Confirm CI is green.
+- Confirm any required manual device E2E notes are recorded.
+
+Merging the release PR runs the release workflow again. This time Changesets publishes `expo-easy-passkey` to npm, creates tags, and updates GitHub release metadata.
+
+After publish, verify npm:
+
+```sh
+npm view expo-easy-passkey version
+npm view expo-easy-passkey dist-tags
+```
+
+For alpha releases, verify that the latest alpha is on the `alpha` dist-tag and not promoted to the stable `latest` tag.
+
+## Automation
+
+The release workflow runs on pushes to `main` and on manual `workflow_dispatch`.
+
+It performs:
+
+```sh
+pnpm install --frozen-lockfile
+pnpm rust:fmt
+pnpm rust:clippy
+pnpm bindgen:check
+pnpm check
+pnpm build
+pnpm pack:check
+```
+
+Then `changesets/action` either opens the release PR or publishes with:
+
+```sh
+pnpm version-packages
+pnpm release
+```
+
+`pnpm pack:check` builds the package, runs the Expo module prepublish check, and performs a dry-run npm pack inspection for `expo-easy-passkey`.
+
+## GitHub and npm
+
+The repository must allow the release workflow to write contents and pull requests. The workflow also requests `id-token: write` so npm can attach provenance to published artifacts.
+
+Configure these settings before the first release:
+
+- Add `NPM_TOKEN` as a GitHub Actions secret.
+- Use an npm automation token or trusted-publishing-compatible token policy that can publish `expo-easy-passkey`.
+- Keep npm 2FA enabled for the maintainer account; use a token type compatible with CI publishing.
+- Ensure the npm package name is available and the token has permission to publish it.
+- Ensure GitHub Actions can create pull requests and tags with `GITHUB_TOKEN`.
+
+## Validation
+
+Run the full local verification suite before merging a release PR when native, Rust, generated binding, or public API changes are involved:
+
+```sh
+pnpm verify
+pnpm bindgen:check
+pnpm --filter expo-easy-passkey prepublishOnly
+pnpm --filter expo-easy-passkey pack --dry-run
+```
+
+Before release, run device E2E too. Passkey ceremonies depend on platform accounts, signing certificates, associated domains, Digital Asset Links, credential providers, and user verification UI. Follow `Device E2E` and record the device model, OS version, app build profile, relying-party domain, and server environment used for the final pass.
+
+When Rust, UniFFI, or native helper code changes, regenerate packageable native Rust artifacts from macOS before opening the release PR:
+
+```sh
+pnpm build:rust-artifacts
+pnpm bindgen:check
+pnpm pack:check
+```
+
+The artifact build writes Android shared libraries to `packages/module/android/src/main/jniLibs` and the iOS xcframework to `packages/module/ios/rust`.
+
+## Failures
+
+If the release PR checks fail, fix the failing code or generated artifacts in a normal PR. The release PR will update after the fix lands on `main`.
+
+If npm publish fails before a version is published, fix the token, package metadata, or workflow issue and rerun the release workflow.
+
+If npm publish partially succeeds, do not republish the same version. Inspect npm first:
+
+```sh
+npm view expo-easy-passkey versions
+npm view expo-easy-passkey dist-tags
+```
+
+If an alpha version was published with the wrong dist-tag, correct the tag instead of publishing a replacement version:
+
+```sh
+npm dist-tag add expo-easy-passkey@0.1.0-alpha.0 alpha
+npm dist-tag rm expo-easy-passkey latest
+```
+
+If a bad package has already been published, publish a new patch or prerelease version with a changeset that explains the fix. Avoid unpublishing unless the case satisfies npm's unpublish policy.
