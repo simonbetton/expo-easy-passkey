@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm rust:fmt
+      - run: pnpm rust:clippy
+      - run: pnpm bindgen:check
+      - run: pnpm check
+      - run: pnpm build
+
+  android-compile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: android-actions/setup-android@v3
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @repo/example exec expo prebuild --platform android --no-install
+      - run: ./gradlew assembleDebug
+        working-directory: apps/example/android
+        env:
+          NODE_ENV: development
+
+  ios-compile:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @repo/example exec expo prebuild --platform ios --no-install
+        env:
+          NODE_ENV: development
+      - run: pod install
+        working-directory: apps/example/ios
+      - run: xcodebuild -workspace "ExpoEasyPasskeyExample.xcworkspace" -scheme "ExpoEasyPasskeyExample" -configuration Debug -sdk iphonesimulator -destination "generic/platform=iOS Simulator" CODE_SIGNING_ALLOWED=NO build
+        working-directory: apps/example/ios
+        env:
+          NODE_ENV: development

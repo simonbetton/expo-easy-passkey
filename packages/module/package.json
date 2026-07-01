@@ -1,0 +1,77 @@
+{
+  "name": "expo-easy-passkey",
+  "version": "0.0.0",
+  "description": "Passkey support for Expo apps with native iOS and Android ceremonies and a WebAuthn-compatible TypeScript API.",
+  "keywords": [
+    "expo",
+    "passkey",
+    "react-native",
+    "webauthn"
+  ],
+  "homepage": "https://github.com/simonbetton/expo-easy-passkey#readme",
+  "bugs": {
+    "url": "https://github.com/simonbetton/expo-easy-passkey/issues"
+  },
+  "license": "MIT",
+  "author": "Expo Easy Passkey Maintainers",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/simonbetton/expo-easy-passkey.git",
+    "directory": "packages/module"
+  },
+  "files": [
+    "android/build.gradle",
+    "android/proguard-rules.pro",
+    "android/src/main",
+    "app.plugin.js",
+    "build",
+    "CHANGELOG.md",
+    "ExpoEasyPasskey.podspec",
+    "expo-module.config.json",
+    "ios/*.swift",
+    "ios/generated",
+    "ios/rust",
+    "package.json",
+    "README.md"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "main": "build/index.js",
+  "types": "build/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./build/index.d.ts",
+      "default": "./build/index.js"
+    },
+    "./app.plugin": {
+      "default": "./app.plugin.js"
+    },
+    "./app.plugin.js": {
+      "default": "./app.plugin.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "expo-module clean",
+    "expo-module": "expo-module",
+    "prepare": "expo-module prepare",
+    "prepublishOnly": "expo-module prepublishOnly",
+    "test": "node --experimental-vm-modules ../../node_modules/jest/bin/jest.js --config jest.config.mjs",
+    "typecheck:test": "tsc -p tsconfig.test.json --noEmit"
+  },
+  "devDependencies": {
+    "@jest/globals": "^30.4.1",
+    "expo-module-scripts": "^56.0.3",
+    "expo-modules-core": "^57.0.1",
+    "typescript": "^6.0.3"
+  },
+  "peerDependencies": {
+    "expo": "*",
+    "expo-modules-core": "*",
+    "react-native": "*"
+  }
+}
