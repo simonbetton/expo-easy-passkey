@@ -1,0 +1,131 @@
+---
+title: Platforms
+description: Configure iOS Associated Domains and Android Digital Asset Links
+---
+
+Native passkeys require a link between your app and your relying-party domain. In WebAuthn, the relying-party ID (RP ID) scopes a passkey. A credential created for one RP ID only works for that RP ID, so registration, authentication, server verification, and native app association must agree.
+
+For most apps, use the domain users recognize as your sign-in domain, such as `example.com`. Use a subdomain like `login.example.com` only when credentials should be limited to that subdomain. Do not use a URL, path, port, or API host just because your options endpoint lives there.
+
+Use the same RP ID domain in these places:
+
+- The Expo plugin config.
+- Registration options as `rp.id`.
+- Authentication options as `rpId`.
+- Server verification as the expected RP ID.
+- The platform association file hosted under `/.well-known`.
+
+For these examples, the domain is `example.com`.
+
+The included `apps/example-backend` can serve the iOS and Android association files for the example app. Configure its trust environment variables when the app identifiers or signing fingerprints differ from the committed demo values.
+
+## Expo config
+
+The plugin writes `webcredentials:example.com` to iOS Associated Domains. Android passkey association is verified from the hosted Digital Asset Links file, so the plugin does not add Android intent filters or make your app handle every `https://example.com` URL.
+
+```json
+{
+  "expo": {
+    "ios": {
+      "bundleIdentifier": "com.example.app"
+    },
+    "android": {
+      "package": "com.example.app"
+    },
+    "plugins": [
+      [
+        "expo-easy-passkey",
+        {
+          "domains": ["example.com"]
+        }
+      ]
+    ]
+  }
+}
+```
+
+## iOS
+
+Host an Apple App Site Association file at:
+
+```txt
+https://example.com/.well-known/apple-app-site-association
+```
+
+It must be served as JSON without a `.json` extension in the URL.
+
+```json
+{
+  "webcredentials": {
+    "apps": ["ABCDE12345.com.example.app"]
+  }
+}
+```
+
+`ABCDE12345` is your Apple Team ID. `com.example.app` is your iOS bundle identifier.
+
+## Android
+
+Host Digital Asset Links at:
+
+```txt
+https://example.com/.well-known/assetlinks.json
+```
+
+The package name and SHA-256 certificate fingerprint must match the build installed on the device.
+
+```json
+[
+  {
+    "relation": [
+      "delegate_permission/common.get_login_creds",
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.example.app",
+      "sha256_cert_fingerprints": [
+        "12:34:56:78:90:AB:CD:EF:12:34:56:78:90:AB:CD:EF:12:34:56:78:90:AB:CD:EF:12:34:56:78:90:AB:CD:EF"
+      ]
+    }
+  }
+]
+```
+
+Android passkey verification currently expects both `delegate_permission/common.get_login_creds` and `delegate_permission/common.handle_all_urls` in `assetlinks.json`. If you also want the app to open links for this domain, configure Android App Links separately in your Expo config with the path constraints your app owns.
+
+Debug, preview, and production builds usually have different signing certificates. Add each fingerprint you plan to test.
+
+## WebAuthn options
+
+Your registration options should use the same relying-party domain:
+
+```ts
+const registrationOptions = {
+  challenge,
+  rp: {
+    id: "example.com",
+    name: "Example",
+  },
+  user,
+  ...
+};
+```
+
+Authentication uses the same value as `rpId`:
+
+```ts
+const authenticationOptions = {
+  challenge,
+  rpId: "example.com",
+  ...
+};
+```
+
+Use the domain only. `rp.id` and `rpId` must not include `https://`, a path, or a port.
+
+## Device testing
+
+Final passkey testing needs real devices. Simulators and emulators may not match platform account, biometric, or credential provider behavior.
+
+When something fails, check association first. A bad AASA file, stale Android fingerprint, or mismatched `rp.id` can stop the system passkey UI before your JavaScript receives a useful response. For Android registration, also verify that the device has a secure screen lock and an enabled credential provider with an account that can save passkeys.

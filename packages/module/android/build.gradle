@@ -1,0 +1,47 @@
+plugins {
+  id "com.android.library"
+  id "org.jetbrains.kotlin.android"
+}
+
+def safeExtGet(prop, fallback) {
+  rootProject.ext.has(prop) ? rootProject.ext.get(prop) : fallback
+}
+
+def expoModulesCorePlugin = new File(
+  project(":expo-modules-core").projectDir.absolutePath,
+  "ExpoModulesCorePlugin.gradle"
+)
+
+apply from: expoModulesCorePlugin
+applyKotlinExpoModulesCorePlugin()
+
+useCoreDependencies()
+useExpoPublishing()
+
+android {
+  namespace "expo.modules.easypasskey"
+  compileSdkVersion safeExtGet("compileSdkVersion", 36)
+
+  defaultConfig {
+    minSdkVersion safeExtGet("minSdkVersion", 28)
+    targetSdkVersion safeExtGet("targetSdkVersion", 36)
+    consumerProguardFiles "proguard-rules.pro"
+  }
+
+  sourceSets {
+    main {
+      java.srcDirs = ["src/main/java"]
+      jniLibs.srcDirs = ["src/main/jniLibs"]
+    }
+    test {
+      java.srcDirs = ["src/test/java"]
+    }
+  }
+}
+
+dependencies {
+  implementation "androidx.credentials:credentials:1.6.0"
+  implementation "androidx.credentials:credentials-play-services-auth:1.6.0"
+  implementation "net.java.dev.jna:jna:5.19.1@aar"
+  testImplementation "junit:junit:4.13.2"
+}

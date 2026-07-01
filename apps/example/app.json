@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "Expo Easy Passkey Example",
+    "slug": "expo-easy-passkey-example",
+    "scheme": "expo-easy-passkey-example",
+    "version": "0.0.0",
+    "orientation": "portrait",
+    "ios": {
+      "bundleIdentifier": "dev.simonbetton.expoeasypasskey.example",
+      "appleTeamId": "DA982D649A"
+    },
+    "android": {
+      "package": "dev.simonbetton.expoeasypasskey.example",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "expo-easy-passkey.vercel.app"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
+    },
+    "plugins": [
+      [
+        "expo-easy-passkey",
+        {
+          "domains": ["expo-easy-passkey.vercel.app"]
+        }
+      ]
+    ]
+  }
+}
