@@ -1,0 +1,45 @@
+---
+title: Testing
+description: Verify Rust, TypeScript, native code, and devices
+---
+
+Run the full local verification suite before release:
+
+```sh
+cargo fmt --check
+cargo clippy --workspace --all-targets -- -D warnings
+pnpm bindgen:check
+pnpm check
+pnpm build
+```
+
+For npm publishing, use this page with `Device E2E` and `Releasing`. `Testing` covers automated checks. `Releasing` covers versioning, changelogs, npm provenance, and failure recovery.
+
+App teams using the package should focus on the manual device checks. Maintainers should run the full suite after touching native code, Rust helpers, generated bindings, or public TypeScript types.
+
+## Rust and FFI
+
+Rust tests cover base64url normalization, RP ID validation, origin validation, client-data JSON, ceremony summaries, shared vectors, and direct FFI exports.
+
+## TypeScript
+
+The Jest tests mock the native bridge behind `expo-easy-passkey` and cover:
+
+- availability
+- registration option forwarding
+- authentication option forwarding
+- response validation
+- deprecated aliases
+- native error code preservation
+- strict typing for TypeScript and JavaScript test files
+- validation, cancellation, malformed response, and invalid credential branches
+
+## Native
+
+Native unit tests cover request parsing, response mapping, and error mapping without launching passkey UI.
+
+CI compiles the example app after `expo prebuild`, which is how consuming apps include the native module.
+
+## Device E2E
+
+Before release, test on real devices. Passkey ceremonies depend on real platform accounts, associated domains, signing certificates, user verification UI, and credential providers.
