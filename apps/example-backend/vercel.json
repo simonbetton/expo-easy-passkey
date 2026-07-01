@@ -1,0 +1,18 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "pnpm install --filter @repo/example-backend... --frozen-lockfile",
+  "buildCommand": "pnpm run build",
+  "bunVersion": "1.x",
+  "builds": [
+    {
+      "src": "src/index.ts",
+      "use": "@vercel/elysia"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "src/index.ts"
+    }
+  ]
+}

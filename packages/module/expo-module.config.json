@@ -1,0 +1,10 @@
+{
+  "platforms": ["ios", "android"],
+  "apple": {
+    "modules": ["ExpoEasyPasskeyModule"],
+    "podspecPath": "ExpoEasyPasskey.podspec"
+  },
+  "android": {
+    "modules": ["expo.modules.easypasskey.ExpoEasyPasskeyModule"]
+  }
+}
