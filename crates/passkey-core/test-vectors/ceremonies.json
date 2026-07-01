@@ -1,0 +1,94 @@
+{
+  "valid": [
+    {
+      "name": "registration",
+      "kind": "create",
+      "rpId": "example.com",
+      "origin": "https://example.com",
+      "challenge": "Y2hhbGxlbmdl",
+      "normalizedChallenge": "Y2hhbGxlbmdl",
+      "clientDataType": "webauthn.create",
+      "crossOrigin": false
+    },
+    {
+      "name": "registration with padded standard base64",
+      "kind": "create",
+      "rpId": "Example.COM",
+      "origin": " https://example.com ",
+      "challenge": "YWJjZA==",
+      "normalizedChallenge": "YWJjZA",
+      "clientDataType": "webauthn.create",
+      "crossOrigin": false
+    },
+    {
+      "name": "authentication",
+      "kind": "get",
+      "rpId": "example.com",
+      "origin": "https://example.com",
+      "challenge": "YXV0aC1jaGFsbGVuZ2U",
+      "normalizedChallenge": "YXV0aC1jaGFsbGVuZ2U",
+      "clientDataType": "webauthn.get",
+      "crossOrigin": false
+    },
+    {
+      "name": "cross-origin authentication",
+      "kind": "get",
+      "rpId": "login.example.com",
+      "origin": "https://login.example.com",
+      "challenge": "+/8=",
+      "normalizedChallenge": "-_8",
+      "clientDataType": "webauthn.get",
+      "crossOrigin": true
+    }
+  ],
+  "invalid": [
+    {
+      "name": "empty challenge",
+      "kind": "create",
+      "rpId": "example.com",
+      "origin": "https://example.com",
+      "challenge": "   ",
+      "expectedError": "base64url value is empty"
+    },
+    {
+      "name": "invalid challenge",
+      "kind": "get",
+      "rpId": "example.com",
+      "origin": "https://example.com",
+      "challenge": "not valid base64!",
+      "expectedError": "base64url value is invalid"
+    },
+    {
+      "name": "empty rp id",
+      "kind": "create",
+      "rpId": "   ",
+      "origin": "https://example.com",
+      "challenge": "Y2hhbGxlbmdl",
+      "expectedError": "rpId is empty"
+    },
+    {
+      "name": "rp id is url",
+      "kind": "get",
+      "rpId": "https://example.com",
+      "origin": "https://example.com",
+      "challenge": "YXV0aC1jaGFsbGVuZ2U",
+      "expectedError": "rpId must be a domain, not a URL"
+    },
+    {
+      "name": "rp id has invalid label",
+      "kind": "create",
+      "rpId": "-example.com",
+      "origin": "https://example.com",
+      "challenge": "Y2hhbGxlbmdl",
+      "expectedError": "rpId contains an invalid domain label"
+    },
+    {
+      "name": "empty origin",
+      "kind": "get",
+      "rpId": "example.com",
+      "origin": "  ",
+      "challenge": "YXV0aC1jaGFsbGVuZ2U",
+      "expectedError": "origin is empty"
+    }
+  ]
+}

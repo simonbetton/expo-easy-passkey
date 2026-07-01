@@ -1,0 +1,29 @@
+[package]
+name = "expo-easy-passkey-ffi"
+version = "0.0.0"
+description = "UniFFI bindings for Expo Easy Passkey WebAuthn helpers."
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[lib]
+crate-type = ["lib", "staticlib", "cdylib"]
+
+[dependencies]
+expo-easy-passkey-core = { path = "../passkey-core" }
+thiserror = "2.0.18"
+uniffi = "0.31.1"
+
+[features]
+cli = ["uniffi/cli"]
+
+[dev-dependencies]
+uniffi = { version = "0.31.1", features = ["bindgen-tests"] }
+
+[[bin]]
+name = "uniffi-bindgen"
+path = "src/bin/uniffi-bindgen.rs"
+required-features = ["cli"]

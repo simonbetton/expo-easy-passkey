@@ -1,0 +1,283 @@
+---
+title: API
+description: Public TypeScript API, options, responses, and errors
+---
+
+Import app-facing APIs from `expo-easy-passkey`.
+
+```ts
+import {
+  authenticateWithPasskey,
+  createPasskey,
+  getPasskeyAvailability,
+  PasskeyError,
+} from "expo-easy-passkey";
+```
+
+## Types
+
+The public option and response types below are generated from the package source at build time.
+
+<Tabs items={["Registration", "Authentication", "Responses", "Availability"]}>
+  <Tab value="Registration">
+
+<AutoTypeTable
+  path="../../packages/module/src/types.ts"
+  name="PublicKeyCredentialCreationOptionsJSON"
+/>
+
+  </Tab>
+  <Tab value="Authentication">
+
+<AutoTypeTable
+  path="../../packages/module/src/types.ts"
+  name="PublicKeyCredentialRequestOptionsJSON"
+/>
+
+  </Tab>
+  <Tab value="Responses">
+
+<AutoTypeTable
+  path="../../packages/module/src/types.ts"
+  name="RegistrationResponseJSON"
+/>
+
+<AutoTypeTable
+  path="../../packages/module/src/types.ts"
+  name="AuthenticationResponseJSON"
+/>
+
+  </Tab>
+  <Tab value="Availability">
+
+<AutoTypeTable
+  path="../../packages/module/src/types.ts"
+  name="PasskeyAvailability"
+/>
+
+  </Tab>
+</Tabs>
+
+## Availability
+
+`getPasskeyAvailability` is synchronous.
+
+```ts
+const availability = getPasskeyAvailability();
+
+if (availability.supported) {
+  console.log(`Passkeys are available on ${availability.platform}`);
+}
+```
+
+It returns:
+
+```ts
+type PasskeyAvailability = {
+  supported: boolean;
+  platform: "ios" | "android" | "web" | "unknown";
+};
+```
+
+Call this before showing passkey entry points. Still handle runtime errors because platform state can change after the check.
+
+## Registration
+
+`createPasskey` starts native passkey registration and returns a `RegistrationResponseJSON` to send to your server.
+
+```ts
+const options = await fetchRegistrationOptions();
+const credential = await createPasskey(options);
+
+await verifyRegistration(credential);
+```
+
+Options use WebAuthn JSON. Binary values must be base64url strings. Use your RP ID domain as `rp.id`; for most apps this is the production sign-in domain, such as `example.com`, without `https://`, a path, or a port.
+
+```ts
+const options = {
+  challenge: "cmVnaXN0cmF0aW9uLWNoYWxsZW5nZQ",
+  rp: {
+    id: "example.com",
+    name: "Example",
+  },
+  user: {
+    id: "dXNlcl8xMjM",
+    name: "lee@example.com",
+    displayName: "Lee",
+  },
+  pubKeyCredParams: [
+    { type: "public-key", alg: -7 },
+    { type: "public-key", alg: -257 },
+  ],
+  excludeCredentials: [
+    {
+      id: "b2xkX2NyZWRlbnRpYWxfaWQ",
+      type: "public-key",
+      transports: ["internal"],
+    },
+  ],
+  authenticatorSelection: {
+    authenticatorAttachment: "platform",
+    residentKey: "preferred",
+    userVerification: "preferred",
+  },
+  attestation: "none",
+  timeout: 60_000,
+  origin: "https://example.com",
+} as const;
+```
+
+The response already has the WebAuthn JSON shape:
+
+```json
+{
+  "id": "Y3JlZGVudGlhbF9pZA",
+  "rawId": "Y3JlZGVudGlhbF9pZA",
+  "type": "public-key",
+  "response": {
+    "clientDataJSON": "eyJ0eXBlIjoid2ViYXV0aG4uY3JlYXRlIn0",
+    "attestationObject": "o2NmbXRkbm9uZWdhdHRTdG10oGhhdXRoRGF0YVg"
+  },
+  "clientExtensionResults": {},
+  "authenticatorAttachment": "platform"
+}
+```
+
+## Authentication
+
+`authenticateWithPasskey` starts native passkey authentication and returns an `AuthenticationResponseJSON` to send to your server.
+
+```ts
+const options = await fetchAuthenticationOptions();
+const assertion = await authenticateWithPasskey(options);
+
+await verifyAuthentication(assertion);
+```
+
+For a discoverable credential flow, omit `allowCredentials` and let the platform show matching passkeys. Use the same RP ID domain as `rpId` that you used as `rp.id` during registration.
+
+```ts
+const options = {
+  challenge: "YXV0aGVudGljYXRpb24tY2hhbGxlbmdl",
+  rpId: "example.com",
+  userVerification: "preferred",
+  timeout: 60_000,
+  origin: "https://example.com",
+} as const;
+```
+
+For a username-first flow, pass the credential IDs stored for that account.
+
+```ts
+const options = {
+  challenge: "YXV0aGVudGljYXRpb24tY2hhbGxlbmdl",
+  rpId: "example.com",
+  allowCredentials: [
+    {
+      id: "Y3JlZGVudGlhbF9pZA",
+      type: "public-key",
+      transports: ["internal"],
+    },
+  ],
+  userVerification: "required",
+} as const;
+```
+
+The authentication response includes the signature fields your server needs:
+
+```json
+{
+  "id": "Y3JlZGVudGlhbF9pZA",
+  "rawId": "Y3JlZGVudGlhbF9pZA",
+  "type": "public-key",
+  "response": {
+    "clientDataJSON": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0In0",
+    "authenticatorData": "SZYN5YgOjGh0NBcPZHZgW4",
+    "signature": "MEUCIA8dgM",
+    "userHandle": "dXNlcl8xMjM"
+  },
+  "clientExtensionResults": {},
+  "authenticatorAttachment": "platform"
+}
+```
+
+## Base64url
+
+The public API normalizes base64 and base64url input for:
+
+- `challenge`
+- `user.id`
+- `excludeCredentials[].id`
+- `allowCredentials[].id`
+
+Padded base64 like `YWJjZA==` is converted to base64url like `YWJjZA` before it reaches native code. Prefer returning base64url from your server so browser and native clients share the same contract.
+
+## Errors
+
+Known passkey failures cross the public API as `PasskeyError`.
+
+```ts
+try {
+  const assertion = await authenticateWithPasskey(options);
+  await verifyAuthentication(assertion);
+} catch (error) {
+  if (error instanceof PasskeyError) {
+    switch (error.code) {
+      case "ERR_PASSKEY_CANCELED":
+        return;
+      case "ERR_PASSKEY_UNSUPPORTED":
+        showPasswordFallback();
+        return;
+      case "ERR_PASSKEY_NO_CREDENTIAL":
+        showCreatePasskeyPrompt();
+        return;
+      default:
+        reportPasskeyError(error);
+        throw error;
+    }
+  }
+
+  throw error;
+}
+```
+
+Common codes:
+
+<Accordions type="multiple">
+  <Accordion title="User cancellation">
+
+`ERR_PASSKEY_CANCELED` is expected when the user closes the system sheet. Treat it like a normal cancellation, not a crash.
+
+  </Accordion>
+  <Accordion title="Unsupported runtime">
+
+`ERR_PASSKEY_UNSUPPORTED`, `ERR_PASSKEY_PRESENTATION_CONTEXT`, and `ERR_PASSKEY_ACTIVITY` mean the current device, app state, or native presentation context cannot run the ceremony. Show another sign-in method.
+
+  </Accordion>
+  <Accordion title="No matching credential">
+
+`ERR_PASSKEY_NO_CREDENTIAL` means the platform could not find a usable credential for the authentication request. Offer account recovery, email sign-in, or passkey registration.
+
+  </Accordion>
+  <Accordion title="Invalid credential response">
+
+`ERR_PASSKEY_INVALID_CREDENTIAL` means the platform reported an invalid public-key credential response. Treat it as a failed ceremony and log the code and message for investigation.
+
+  </Accordion>
+  <Accordion title="Validation or native bridge failures">
+
+`ERR_PASSKEY_VALIDATION`, `ERR_PASSKEY_NATIVE`, `ERR_PASSKEY_CREATE`, `ERR_PASSKEY_GET`, and `ERR_PASSKEY_INVALID_RESPONSE` usually need developer attention. Log the code and message, then fail the ceremony. On Android registration, `ERR_PASSKEY_NATIVE` with `No create options available` means Credential Manager found no eligible create option for the current request and device setup; after association and request shape are known-good, prompt the user to add a Google account or enable a passkey-capable password manager.
+
+  </Accordion>
+</Accordions>
+
+## Aliases
+
+Browser-style aliases remain exported for older code:
+
+```ts
+import { create, get } from "expo-easy-passkey";
+```
+
+Use `createPasskey` and `authenticateWithPasskey` for new app code. The longer names make stack traces and app event names easier to read.

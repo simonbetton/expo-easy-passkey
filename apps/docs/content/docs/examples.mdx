@@ -1,0 +1,275 @@
+---
+title: Examples
+description: App recipes for common passkey flows
+---
+
+These examples assume your server already returns WebAuthn JSON options and verifies the responses.
+
+## Example app
+
+The example app calls `apps/example-backend` for WebAuthn options and verification. The committed signing and relying-party values target `expo-easy-passkey-example-backend.vercel.app`. Replace them before testing native passkey ceremonies against a domain you control:
+
+1. Set `apps/example/app.json` `expo.ios.appleTeamId` to your Apple Team ID.
+2. Set `expo.ios.bundleIdentifier` to a bundle ID registered to that team.
+3. Set the plugin `domains` entry to your relying-party domain, for example `login.example.com`.
+4. Start or deploy `apps/example-backend` on that domain with matching `PASSKEY_RP_ID` and `PASSKEY_ORIGIN` values.
+5. Set the backend trust env vars so it serves `/.well-known/apple-app-site-association` and `/.well-known/assetlinks.json` for the installed app build.
+6. Point the app at your backend with `EXPO_PUBLIC_PASSKEY_API_BASE_URL=https://login.example.com`.
+
+Then rebuild the native app:
+
+```sh
+pnpm --filter @repo/example-backend vercel:dev
+pnpm --filter @repo/example run android
+pnpm --filter @repo/example run ios
+```
+
+The backend example uses in-memory storage. It demonstrates challenge and credential handling, but it is not durable across Vercel cold starts, multiple function instances, or redeploys.
+
+For local development, the backend can run on your machine, but real native passkey ceremonies still need `rp.id` and `origin` to match an associated domain trusted by iOS and Android. Keep `PASSKEY_RP_ID` set to your associated domain, and use a tunnel or hosted URL if the device must reach your local backend.
+
+## API client
+
+Keep the network code small. The passkey ceremony should receive options from your server and send the result back without reshaping fields in the app.
+
+The examples use `fetch` at that server boundary. Options endpoints create fresh WebAuthn challenges. Verify endpoints validate the native response. This package does not replace those server responsibilities. The demo imports `fetch` from [`expo/fetch`](https://docs.expo.dev/versions/latest/sdk/expo/#expofetch-api), which uses the same WinterCG-compliant API across Expo web and native runtimes.
+
+```ts
+import { fetch } from "expo/fetch";
+
+const apiBaseUrl = "https://example.com";
+
+export async function postJson<T>(path: string, body?: unknown): Promise<T> {
+  const response = await fetch(`${apiBaseUrl}${path}`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+
+  return response.json() as Promise<T>;
+}
+```
+
+## Add a passkey
+
+Call this after the user has created an account or signed in with another method.
+
+```tsx
+import { createPasskey, PasskeyError } from "expo-easy-passkey";
+import { useState } from "react";
+import { Button, Text, View } from "react-native";
+
+import { postJson } from "./api";
+
+export function AddPasskeyButton() {
+  const [message, setMessage] = useState<string | null>(null);
+
+  const addPasskey = async () => {
+    setMessage(null);
+
+    try {
+      const options = await postJson("/passkeys/register/options");
+      const credential = await createPasskey(options);
+
+      await postJson("/passkeys/register/verify", credential);
+      setMessage("Passkey added.");
+    } catch (error) {
+      if (
+        error instanceof PasskeyError &&
+        error.code === "ERR_PASSKEY_CANCELED"
+      ) {
+        setMessage("Passkey setup was canceled.");
+        return;
+      }
+
+      setMessage("Passkey setup failed.");
+      throw error;
+    }
+  };
+
+  return (
+    <View>
+      <Button title="Add a passkey" onPress={() => void addPasskey()} />
+      {message ? <Text>{message}</Text> : null}
+    </View>
+  );
+}
+```
+
+## Sign in
+
+<Tabs items={["Passkey first", "Username first"]}>
+  <Tab value="Passkey first">
+
+Use this when the user taps "Sign in with a passkey" before entering an email address. The server should return authentication options without `allowCredentials`.
+
+```tsx
+import {
+  authenticateWithPasskey,
+  getPasskeyAvailability,
+  PasskeyError,
+} from "expo-easy-passkey";
+import { Button } from "react-native";
+
+import { postJson } from "./api";
+
+export function PasskeySignInButton() {
+  const availability = getPasskeyAvailability();
+
+  const signIn = async () => {
+    try {
+      const options = await postJson("/passkeys/authenticate/options");
+      const assertion = await authenticateWithPasskey(options);
+      const session = await postJson(
+        "/passkeys/authenticate/verify",
+        assertion
+      );
+
+      console.log("Signed in", session);
+    } catch (error) {
+      if (
+        error instanceof PasskeyError &&
+        error.code === "ERR_PASSKEY_CANCELED"
+      ) {
+        return;
+      }
+
+      throw error;
+    }
+  };
+
+  return (
+    <Button
+      disabled={!availability.supported}
+      title="Sign in with a passkey"
+      onPress={() => void signIn()}
+    />
+  );
+}
+```
+
+  </Tab>
+  <Tab value="Username first">
+
+Use this when the user enters an email address first. The server can look up the account and return `allowCredentials` for that user.
+
+```tsx
+import { authenticateWithPasskey } from "expo-easy-passkey";
+
+import { postJson } from "./api";
+
+export async function signInForEmail(email: string) {
+  const options = await postJson("/passkeys/authenticate/options", { email });
+  const assertion = await authenticateWithPasskey(options);
+
+  return postJson("/passkeys/authenticate/verify", {
+    email,
+    assertion,
+  });
+}
+```
+
+Server response for the options request:
+
+```json
+{
+  "challenge": "YXV0aGVudGljYXRpb24tY2hhbGxlbmdl",
+  "rpId": "example.com",
+  "allowCredentials": [
+    {
+      "id": "Y3JlZGVudGlhbF9pZA",
+      "type": "public-key",
+      "transports": ["internal"]
+    }
+  ],
+  "userVerification": "required"
+}
+```
+
+  </Tab>
+</Tabs>
+
+## Fallback
+
+Do not hide every other sign-in method when passkeys are unavailable. Offer a password, magic link, or recovery flow.
+
+```tsx
+import { getPasskeyAvailability } from "expo-easy-passkey";
+import { Button, View } from "react-native";
+
+export function SignInActions() {
+  const availability = getPasskeyAvailability();
+
+  return (
+    <View>
+      {availability.supported ? (
+        <Button title="Sign in with a passkey" onPress={() => {}} />
+      ) : null}
+      <Button title="Use email instead" onPress={() => {}} />
+    </View>
+  );
+}
+```
+
+## Errors
+
+Keep cancellation quiet. Show a fallback when the runtime is unsupported. Log unexpected native errors with the code.
+
+```ts
+import { PasskeyError } from "expo-easy-passkey";
+
+export function passkeyMessage(error: unknown) {
+  if (!(error instanceof PasskeyError)) {
+    return "Something went wrong. Try again.";
+  }
+
+  switch (error.code) {
+    case "ERR_PASSKEY_CANCELED":
+      return null;
+    case "ERR_PASSKEY_UNSUPPORTED":
+      return "This device cannot use passkeys. Try another sign-in method.";
+    case "ERR_PASSKEY_VALIDATION":
+      return "The passkey request was invalid. Refresh and try again.";
+    default:
+      return "Passkey sign-in failed. Try again or use another method.";
+  }
+}
+```
+
+## Demo options
+
+Hard-coded options are useful for smoke testing the bridge, but do not ship them. Real challenges must come from the server and be single use.
+
+```ts
+export const registrationOptions = {
+  challenge: "cmVnaXN0cmF0aW9uLWNoYWxsZW5nZQ",
+  origin: "https://example.com",
+  rp: {
+    id: "example.com",
+    name: "Example",
+  },
+  user: {
+    id: "ZXhhbXBsZS11c2Vy",
+    name: "demo@example.com",
+    displayName: "Demo User",
+  },
+  pubKeyCredParams: [{ alg: -7, type: "public-key" }],
+  authenticatorSelection: {
+    authenticatorAttachment: "platform",
+    residentKey: "preferred",
+    userVerification: "preferred",
+  },
+  attestation: "none",
+} as const;
+
+export const authenticationOptions = {
+  challenge: "YXV0aGVudGljYXRpb24tY2hhbGxlbmdl",
+  origin: "https://example.com",
+  rpId: "example.com",
+  userVerification: "preferred",
+} as const;
+```

@@ -1,0 +1,50 @@
+{
+  "name": "expo-easy-passkey-repo",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Open-source Expo module for adding passkey support to Expo projects.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "pnpm -r --if-present build",
+    "build:rust": "cargo build --workspace",
+    "build:rust-artifacts": "bash scripts/build-rust-artifacts.sh",
+    "bindgen": "bash scripts/generate-bindings.sh",
+    "bindgen:check": "bash scripts/check-bindings.sh",
+    "changeset": "changeset",
+    "check": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm test",
+    "format": "ultracite fix .",
+    "format:check": "ultracite check .",
+    "lint": "ultracite check .",
+    "pack:check": "pnpm --filter expo-easy-passkey build && pnpm --filter expo-easy-passkey prepublishOnly && cd packages/module && npm pack --dry-run",
+    "prepare": "lefthook install",
+    "release": "changeset publish",
+    "rust:clippy": "cargo clippy --workspace --all-targets -- -D warnings",
+    "rust:fmt": "cargo fmt --check",
+    "test": "pnpm test:js && pnpm test:rust",
+    "test:js": "pnpm -r --if-present test",
+    "test:rust": "cargo test --workspace",
+    "typecheck": "npx tsgo --noEmit && pnpm -r --if-present typecheck:test",
+    "verify": "pnpm rust:fmt && pnpm rust:clippy && pnpm bindgen:check && pnpm check && pnpm build",
+    "version-packages": "changeset version"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.29.7",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^26.0.1",
+    "@types/react": "^19.2.17",
+    "@typescript/native-preview": "7.0.0-dev.20260701.1",
+    "jest": "^30.4.2",
+    "lefthook": "^2.1.9",
+    "oxfmt": "^0.57.0",
+    "oxlint": "^1.72.0",
+    "ts-jest": "^29.4.11",
+    "typescript": "^6.0.3",
+    "ultracite": "^7.8.3"
+  },
+  "engines": {
+    "node": ">=24",
+    "pnpm": ">=10"
+  },
+  "packageManager": "pnpm@10.0.0"
+}
