@@ -1,0 +1,58 @@
+---
+title: Device E2E
+description: Real-device passkey checklist
+---
+
+Before a release, test on real devices. Passkey ceremonies depend on platform accounts, app signing, associated domains, Digital Asset Links, credential providers, and user verification UI.
+
+Use a real relying-party domain and a real development or production build.
+
+Maintainers should complete this checklist before merging a release PR. Then follow `Releasing` for versioning, changelog review, npm publish, and post-publish verification.
+
+## Prerequisites
+
+- A server that returns fresh WebAuthn registration and authentication options.
+- Server-side verification for registration and authentication responses.
+- iOS `apple-app-site-association` hosted at `/.well-known/apple-app-site-association`.
+- Android `assetlinks.json` hosted at `/.well-known/assetlinks.json`.
+- The app build signed with the certificate fingerprints listed in `assetlinks.json`.
+- A physical iOS or Android device with screen lock and passkeys enabled.
+
+## Builds
+
+Run at least one iOS build and one Android build. If your Android debug and production builds use different signing certificates, test both or add both fingerprints to Digital Asset Links.
+
+```txt
+iOS development build -> example.com AASA -> registration -> authentication
+Android development build -> assetlinks.json debug fingerprint -> registration -> authentication
+Android production build -> assetlinks.json production fingerprint -> registration -> authentication
+```
+
+## Registration
+
+1. Install a fresh app build.
+2. Fetch a fresh registration challenge from the server.
+3. Call `createPasskey`.
+4. Confirm platform UI is shown.
+5. Complete user verification.
+6. Send `RegistrationResponseJSON` to the server.
+7. Confirm server verification succeeds and stores the credential.
+
+## Authentication
+
+1. Fetch a fresh authentication challenge from the server.
+2. Call `authenticateWithPasskey`.
+3. Complete user verification.
+4. Send `AuthenticationResponseJSON` to the server.
+5. Confirm server verification succeeds.
+
+## Negative cases
+
+- Cancel platform UI and confirm `ERR_PASSKEY_CANCELED`.
+- Use an unassociated domain and confirm platform failure is reported.
+- Use an expired challenge and confirm server verification fails.
+- Use a release-signed build against debug-only Android asset links and confirm association failure.
+
+## Release notes
+
+Record the device model, OS version, app build profile, relying-party domain, and server environment used for the final pass. Those details make regressions much easier to reproduce later.

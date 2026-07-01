@@ -1,0 +1,14 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "installCommand": "corepack enable && corepack prepare pnpm@10.0.0 --activate && pnpm install --filter @repo/example-backend... --frozen-lockfile",
+  "buildCommand": "pnpm run build",
+  "outputDirectory": ".",
+  "bunVersion": "1.x",
+  "rewrites": [
+    {
+      "source": "/:path*",
+      "destination": "/api?path=:path*"
+    }
+  ]
+}

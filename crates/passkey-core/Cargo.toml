@@ -1,0 +1,16 @@
+[package]
+name = "expo-easy-passkey-core"
+version = "0.0.0"
+description = "Portable WebAuthn helpers for Expo Easy Passkey."
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+base64 = "0.22.1"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.150"
+thiserror = "2.0.18"
