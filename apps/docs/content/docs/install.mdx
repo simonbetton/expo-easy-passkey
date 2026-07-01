@@ -1,0 +1,124 @@
+---
+title: Install
+description: Add Expo Easy Passkey to your app
+---
+
+Install the package in your Expo app. `expo-easy-passkey` includes the public TypeScript API, native Expo module, and config plugin.
+
+<Tabs groupId="package-manager" items={["pnpm", "npm", "yarn"]} persist>
+  <Tab value="pnpm">
+
+```sh
+pnpm add expo-easy-passkey
+```
+
+  </Tab>
+  <Tab value="npm">
+
+```sh
+npm install expo-easy-passkey
+```
+
+  </Tab>
+  <Tab value="yarn">
+
+```sh
+yarn add expo-easy-passkey
+```
+
+  </Tab>
+</Tabs>
+
+## Plugin config
+
+Add the native module plugin to `app.json` or `app.config.ts`. Set `domains` to the relying-party domain your passkey server uses as `rp.id` and `rpId`. Usually this is the production sign-in domain users recognize, with no `https://`, path, or port.
+
+```json
+{
+  "expo": {
+    "plugins": [
+      [
+        "expo-easy-passkey",
+        {
+          "domains": ["example.com"]
+        }
+      ]
+    ]
+  }
+}
+```
+
+For a real app, this domain must belong to you. Do not use `localhost` as the relying-party ID for native passkey testing.
+
+The plugin uses `domains` for passkey association. It does not add Android intent filters or make your app open all links for that domain; configure Android App Links separately if your app also owns URL handling.
+
+## Rebuild
+
+Expo Go cannot load custom native modules, so use a development build or production build.
+
+<Tabs items={["Local run", "EAS"]}>
+  <Tab value="Local run">
+
+```sh
+npx expo prebuild
+npx expo run:ios
+npx expo run:android
+```
+
+  </Tab>
+  <Tab value="EAS">
+
+```sh
+eas build --profile development --platform ios
+eas build --profile development --platform android
+```
+
+  </Tab>
+</Tabs>
+
+<Accordions type="single">
+  <Accordion title="Why not Expo Go?">
+
+Expo Go ships with Expo's built-in native modules only. Passkey ceremonies need this package's native module and config plugin output, so test with a development build or a production build.
+
+  </Accordion>
+  <Accordion title="When should I rebuild?">
+
+Rebuild after installing the package, changing plugin domains, changing the iOS bundle identifier, or changing Android package/application link configuration.
+
+  </Accordion>
+</Accordions>
+
+## Runtime support
+
+Call `getPasskeyAvailability` before showing passkey buttons. A device can be unsupported because of OS version, account setup, screen lock settings, or missing Android Credential Manager support.
+
+```tsx
+import { getPasskeyAvailability } from "expo-easy-passkey";
+import { Button, Text, View } from "react-native";
+
+export function PasskeyActions() {
+  const availability = getPasskeyAvailability();
+
+  if (!availability.supported) {
+    return <Text>Passkeys are not available on this device.</Text>;
+  }
+
+  return (
+    <View>
+      <Button title="Create a passkey" onPress={() => {}} />
+      <Button title="Sign in with a passkey" onPress={() => {}} />
+    </View>
+  );
+}
+```
+
+## Package boundary
+
+Import public APIs from `expo-easy-passkey` in app code:
+
+```ts
+import { createPasskey } from "expo-easy-passkey";
+```
+
+Use the same package in app code and Expo config. Expo autolinking uses it to compile and configure the platform code.

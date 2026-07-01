@@ -1,0 +1,109 @@
+---
+title: Troubleshooting
+description: Fix setup and runtime issues
+---
+
+Start with the step that failed. If the system passkey sheet never appears, check platform association and build setup first. If the sheet appears and verification fails, check your server challenge, origin, and credential storage.
+
+## Expo Go
+
+Expo Go cannot load this native module. Use a development build or production build.
+
+```sh
+npx expo run:ios
+npx expo run:android
+```
+
+With EAS:
+
+```sh
+eas build --profile development --platform ios
+eas build --profile development --platform android
+```
+
+## `ERR_PASSKEY_UNSUPPORTED`
+
+The platform cannot run passkey ceremonies.
+
+Check:
+
+- The app is not running in Expo Go.
+- The device has a supported OS version.
+- The device has screen lock, biometrics, or another user verification method enabled.
+- Android has a credential provider available.
+- The app is running on a real device for final testing.
+
+Show another sign-in method when this happens.
+
+```ts
+if (!getPasskeyAvailability().supported) {
+  showEmailFallback();
+}
+```
+
+## `ERR_PASSKEY_CANCELED`
+
+The user closed the system passkey UI. This is expected.
+
+```ts
+if (error instanceof PasskeyError && error.code === "ERR_PASSKEY_CANCELED") {
+  return;
+}
+```
+
+Do not log this as a production error unless you are measuring funnel drop-off.
+
+## `ERR_PASSKEY_NO_CREDENTIAL`
+
+The platform could not find a passkey that matches the authentication request. This can happen when the user has not registered a passkey for the account, the credential was removed from their password manager, or the `rpId`/allow-list does not match the stored credential.
+
+Offer another sign-in method or a passkey registration path.
+
+## `ERR_PASSKEY_INVALID_CREDENTIAL`
+
+The platform returned an invalid public-key credential response. Log the code and message, then check the challenge, `rpId`, association files, and platform logs.
+
+## Associations
+
+If native UI fails before a credential is created, verify:
+
+- iOS Associated Domains contains `webcredentials:<domain>`.
+- `apple-app-site-association` is valid JSON with no `.json` extension in the URL.
+- Android `assetlinks.json` includes the correct package name and SHA-256 certificate fingerprint.
+- `rp.id` and `rpId` use the same RP ID domain as the associated domain.
+
+Use the domain only:
+
+```ts
+rp: { id: "example.com", name: "Example" }
+```
+
+Not URLs:
+
+```ts
+rp: { id: "https://example.com", name: "Example" }
+```
+
+Android debug builds, preview builds, and production builds usually need different SHA-256 fingerprints in `assetlinks.json`.
+
+## Server verification
+
+If native registration or authentication succeeds but the server rejects the response, check:
+
+- The challenge sent to the app matches the challenge stored on the server.
+- The challenge was not reused.
+- `expectedOrigin` matches the origin in `clientDataJSON`.
+- `expectedRPID` matches the same RP ID domain as `rp.id` and `rpId`.
+- Credential IDs are encoded consistently, usually base64url.
+- The server stores the credential public key after registration.
+- The server updates the sign counter after authentication if your verifier returns one.
+
+For native apps, `origin` should be the web origin for your relying party, such as `https://example.com`.
+
+## Invalid response
+
+`ERR_PASSKEY_INVALID_RESPONSE` means the native layer returned a value that does not match WebAuthn JSON. Capture the native response in development and compare it to the API docs before sending it to server verification.
+
+## Binding drift
+
+Run `pnpm bindgen:check` if Swift or Kotlin generated files look stale after changing `crates/passkey-ffi`.

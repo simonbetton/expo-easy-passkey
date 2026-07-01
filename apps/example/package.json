@@ -1,0 +1,23 @@
+{
+  "name": "@repo/example",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "expo/AppEntry.js",
+  "scripts": {
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "start": "expo start",
+    "test": "tsc -p tsconfig.json --noEmit",
+    "web": "expo start --web"
+  },
+  "dependencies": {
+    "expo": "^57.0.1",
+    "expo-easy-passkey": "workspace:^",
+    "react": "^19.2.7",
+    "react-native": "^0.86.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.17"
+  }
+}
