@@ -1,0 +1,219 @@
+---
+title: Server
+description: Connect app ceremonies to server verification
+---
+
+Expo Easy Passkey runs the native ceremony. Your server owns the security model.
+
+The server should:
+
+- Create a fresh challenge for every registration and authentication attempt.
+- Store the challenge until verification finishes.
+- Verify the response from the app.
+- Store credential public keys after registration.
+- Check sign counters and replay attempts during authentication.
+- Create the app session after authentication succeeds.
+
+## Endpoints
+
+Use four endpoints. The names can change, but keep the options and verification steps separate.
+
+```txt
+POST /passkeys/register/options
+POST /passkeys/register/verify
+POST /passkeys/authenticate/options
+POST /passkeys/authenticate/verify
+```
+
+Options endpoints return WebAuthn JSON. Verify endpoints receive the JSON returned by `createPasskey` or `authenticateWithPasskey`.
+
+The app snippets use `fetch` to show the boundary. The app asks for options, runs the native ceremony, and posts the result back. Your verifier still handles passkey security. These demos import `fetch` from [`expo/fetch`](https://docs.expo.dev/versions/latest/sdk/expo/#expofetch-api), Expo's WinterCG-compliant Fetch API.
+
+## Registration
+
+```tsx
+import { fetch } from "expo/fetch";
+import { createPasskey } from "expo-easy-passkey";
+
+export async function addPasskey() {
+  const optionsResponse = await fetch(
+    "https://example.com/passkeys/register/options",
+    { method: "POST" }
+  );
+  const options = await optionsResponse.json();
+
+  const credential = await createPasskey(options);
+
+  const verifyResponse = await fetch(
+    "https://example.com/passkeys/register/verify",
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(credential),
+    }
+  );
+
+  if (!verifyResponse.ok) {
+    throw new Error(await verifyResponse.text());
+  }
+}
+```
+
+Registration options need `challenge`, `rp`, `user`, and the authenticator preferences your product uses. `rp.id` is the relying-party ID: the domain that owns and scopes the credential. For most apps, use your production sign-in domain, such as `example.com`.
+
+```json
+{
+  "challenge": "cmVnaXN0cmF0aW9uLWNoYWxsZW5nZQ",
+  "rp": {
+    "id": "example.com",
+    "name": "Example"
+  },
+  "user": {
+    "id": "dXNlcl8xMjM",
+    "name": "lee@example.com",
+    "displayName": "Lee"
+  },
+  "pubKeyCredParams": [{ "type": "public-key", "alg": -7 }],
+  "authenticatorSelection": {
+    "authenticatorAttachment": "platform",
+    "residentKey": "preferred",
+    "userVerification": "preferred"
+  },
+  "attestation": "none",
+  "timeout": 60000
+}
+```
+
+## Authentication
+
+```tsx
+import { fetch } from "expo/fetch";
+import { authenticateWithPasskey } from "expo-easy-passkey";
+
+export async function signInWithPasskey() {
+  const optionsResponse = await fetch(
+    "https://example.com/passkeys/authenticate/options",
+    { method: "POST" }
+  );
+  const options = await optionsResponse.json();
+
+  const assertion = await authenticateWithPasskey(options);
+
+  const verifyResponse = await fetch(
+    "https://example.com/passkeys/authenticate/verify",
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(assertion),
+    }
+  );
+
+  if (!verifyResponse.ok) {
+    throw new Error(await verifyResponse.text());
+  }
+
+  return verifyResponse.json();
+}
+```
+
+For passkey-first sign-in, return options without `allowCredentials`. `rpId` must be the same relying-party ID you used as `rp.id` during registration.
+
+```json
+{
+  "challenge": "YXV0aGVudGljYXRpb24tY2hhbGxlbmdl",
+  "rpId": "example.com",
+  "userVerification": "preferred",
+  "timeout": 60000
+}
+```
+
+For username-first sign-in, return only credentials that belong to the selected account.
+
+```json
+{
+  "challenge": "YXV0aGVudGljYXRpb24tY2hhbGxlbmdl",
+  "rpId": "example.com",
+  "allowCredentials": [
+    {
+      "id": "Y3JlZGVudGlhbF9pZA",
+      "type": "public-key",
+      "transports": ["internal"]
+    }
+  ],
+  "userVerification": "required"
+}
+```
+
+## SimpleWebAuthn
+
+Many teams use `@simplewebauthn/server` on the backend. The values to keep consistent are the relying-party ID and origin.
+
+```ts
+const rpID = "example.com";
+const expectedOrigin = "https://example.com";
+```
+
+Registration options:
+
+```ts
+import { generateRegistrationOptions } from "@simplewebauthn/server";
+
+export async function registrationOptions(user: User) {
+  const options = await generateRegistrationOptions({
+    rpID: "example.com",
+    rpName: "Example",
+    userID: user.idBytes,
+    userName: user.email,
+    userDisplayName: user.name,
+    attestationType: "none",
+    authenticatorSelection: {
+      authenticatorAttachment: "platform",
+      residentKey: "preferred",
+      userVerification: "preferred",
+    },
+    excludeCredentials: user.passkeys.map((passkey) => ({
+      id: passkey.credentialId,
+      type: "public-key",
+      transports: passkey.transports,
+    })),
+  });
+
+  await saveChallenge(user.id, options.challenge);
+
+  return options;
+}
+```
+
+Registration verification:
+
+```ts
+import { verifyRegistrationResponse } from "@simplewebauthn/server";
+
+export async function verifyRegistration(user: User, credential: unknown) {
+  const expectedChallenge = await loadChallenge(user.id);
+
+  const verification = await verifyRegistrationResponse({
+    response: credential,
+    expectedChallenge,
+    expectedOrigin: "https://example.com",
+    expectedRPID: "example.com",
+  });
+
+  if (!verification.verified || !verification.registrationInfo) {
+    throw new Error("Passkey registration failed");
+  }
+
+  await savePasskey(user.id, verification.registrationInfo);
+}
+```
+
+Authentication verification follows the same pattern: load the saved credential, verify the assertion with the expected challenge, update the sign counter, then create the app session.
+
+## Server checklist
+
+- Challenge values are single use.
+- Challenge values expire quickly.
+- `rp.id`, `rpId`, `expectedRPID`, the iOS AASA file, and Android Digital Asset Links all use the same RP ID domain.
+- `expectedOrigin` matches the origin encoded into `clientDataJSON`.
+- Credential IDs are stored as base64url strings or converted consistently at the server boundary.
+- Authentication updates the stored sign counter when your verifier exposes one.

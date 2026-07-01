@@ -1,0 +1,11 @@
+[workspace]
+members = ["crates/passkey-core", "crates/passkey-ffi"]
+resolver = "2"
+
+[workspace.package]
+authors = ["Expo Easy Passkey Maintainers"]
+edition = "2024"
+homepage = "https://github.com/simonbetton/expo-easy-passkey"
+license = "MIT"
+repository = "https://github.com/simonbetton/expo-easy-passkey"
+rust-version = "1.85"
