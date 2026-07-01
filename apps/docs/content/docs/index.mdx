@@ -1,0 +1,128 @@
+---
+title: Expo Easy Passkey
+description: Native passkeys for Expo apps using WebAuthn JSON
+---
+
+Expo Easy Passkey lets Expo apps create passkeys and sign users in with them. The app opens the native iOS or Android passkey UI, then sends WebAuthn JSON back to your server for verification.
+
+It does not replace your relying-party server. Your server still creates challenges, verifies responses, stores credential public keys, and blocks replay.
+
+## Features
+
+- A small Expo API: `createPasskey`, `authenticateWithPasskey`, and `getPasskeyAvailability`.
+- Native registration and sign-in through iOS AuthenticationServices and Android Credential Manager.
+- WebAuthn-compatible JSON request and response shapes.
+- A config plugin for iOS Associated Domains and Android verified app links.
+- Shared Rust helpers for validation and native binding parity.
+
+## App flow
+
+The examples use `fetch` because passkeys need both the app and your server. Native code runs the device ceremony. Your relying-party server issues fresh challenges and verifies the returned WebAuthn JSON. The networking is not part of Expo Easy Passkey; it is the app-server boundary every passkey implementation needs.
+
+The demo imports `fetch` from [`expo/fetch`](https://docs.expo.dev/versions/latest/sdk/expo/#expofetch-api), Expo's WinterCG-compliant Fetch API. Expo also installs this implementation as global `fetch` on Android and iOS, but the import keeps the example explicit.
+
+```ts
+import { fetch } from "expo/fetch";
+import {
+  authenticateWithPasskey,
+  createPasskey,
+  getPasskeyAvailability,
+  PasskeyError,
+} from "expo-easy-passkey";
+
+const availability = getPasskeyAvailability();
+
+export async function registerPasskey() {
+  if (!availability.supported) {
+    throw new Error(`Passkeys are not available on ${availability.platform}`);
+  }
+
+  const options = await fetchJson("/passkeys/register/options");
+  const credential = await createPasskey(options);
+
+  await fetchJson("/passkeys/register/verify", {
+    method: "POST",
+    body: JSON.stringify(credential),
+  });
+}
+
+export async function signInWithPasskey() {
+  try {
+    const options = await fetchJson("/passkeys/authenticate/options");
+    const assertion = await authenticateWithPasskey(options);
+
+    return await fetchJson("/passkeys/authenticate/verify", {
+      method: "POST",
+      body: JSON.stringify(assertion),
+    });
+  } catch (error) {
+    if (
+      error instanceof PasskeyError &&
+      error.code === "ERR_PASSKEY_CANCELED"
+    ) {
+      return null;
+    }
+
+    throw error;
+  }
+}
+```
+
+```ts
+async function fetchJson(path: string, init?: RequestInit) {
+  const response = await fetch(`https://example.com${path}`, {
+    headers: { "content-type": "application/json" },
+    ...init,
+  });
+
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+
+  return response.json();
+}
+```
+
+## Registration options
+
+Your server returns WebAuthn JSON. The app passes it to `createPasskey` without reshaping it.
+
+```ts
+const options = {
+  challenge: "cmVnaXN0cmF0aW9uLWNoYWxsZW5nZQ",
+  rp: {
+    id: "example.com",
+    name: "Example",
+  },
+  user: {
+    id: "dXNlcl8xMjM",
+    name: "lee@example.com",
+    displayName: "Lee",
+  },
+  pubKeyCredParams: [{ type: "public-key", alg: -7 }],
+  authenticatorSelection: {
+    authenticatorAttachment: "platform",
+    residentKey: "preferred",
+    userVerification: "preferred",
+  },
+  attestation: "none",
+} as const;
+
+const credential = await createPasskey(options);
+```
+
+## Authentication options
+
+```ts
+const options = {
+  challenge: "YXV0aGVudGljYXRpb24tY2hhbGxlbmdl",
+  rpId: "example.com",
+  userVerification: "preferred",
+} as const;
+
+const assertion = await authenticateWithPasskey(options);
+```
+
+## Next steps
+
+Start with `Install`, then configure the association files in `Platforms`. Read `Server` and `Examples` before testing on a real device. Maintainers preparing an npm release should also read `Testing`, `Device E2E`, and `Releasing`.

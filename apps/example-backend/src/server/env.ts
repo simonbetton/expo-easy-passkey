@@ -1,0 +1,1 @@
+process.env.CBOR_NATIVE_ACCELERATION_DISABLED ??= "true";
