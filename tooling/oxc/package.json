@@ -1,0 +1,10 @@
+{
+  "name": "@repo/oxc-config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./oxlint": "./oxlint.json",
+    "./oxfmt": "./oxfmt.json"
+  }
+}

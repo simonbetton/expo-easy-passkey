@@ -1,0 +1,16 @@
+{
+  "title": "Expo Easy Passkey",
+  "pages": [
+    "index",
+    "install",
+    "platform",
+    "server",
+    "examples",
+    "api",
+    "architecture",
+    "testing",
+    "releasing",
+    "manual-e2e",
+    "troubleshooting"
+  ]
+}
