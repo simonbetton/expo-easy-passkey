@@ -1,0 +1,16 @@
+{
+  "extends": "../../tooling/typescript/expo.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "paths": {
+      "expo-easy-passkey": ["../../packages/module/src/index.ts"]
+    }
+  },
+  "include": [
+    "App.tsx",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "../../packages/module/src/**/*.ts"
+  ],
+  "exclude": ["../../packages/**/*.test.ts"]
+}

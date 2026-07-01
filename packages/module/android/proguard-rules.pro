@@ -1,0 +1,4 @@
+-keep class com.sun.jna.** { *; }
+-keep class * implements com.sun.jna.Library { *; }
+-keep class uniffi.expo_easy_passkey_ffi.** { *; }
+-dontwarn java.awt.**
