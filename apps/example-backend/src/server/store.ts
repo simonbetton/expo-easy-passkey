@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import type {
   AuthenticatorTransportFuture,
   Base64URLString,
@@ -11,10 +13,19 @@ export interface DemoUser {
   webAuthnUserId: string;
 }
 
-export interface StoredChallenge {
+export type CeremonyKind = "authentication" | "registration";
+
+export interface CeremonyRef {
+  ceremonyId: string;
+  kind: CeremonyKind;
+  userId: string;
+}
+
+export interface StoredCeremony {
   challenge: string;
+  ceremonyId: string;
   expiresAt: number;
-  kind: "authentication" | "registration";
+  kind: CeremonyKind;
   userId: string;
 }
 
@@ -36,72 +47,125 @@ const demoUser: DemoUser = {
   webAuthnUserId: "expo-easy-passkey-demo-user",
 };
 
-const challenges = new Map<string, StoredChallenge>();
-const passkeys = new Map<Base64URLString, StoredPasskey>();
+interface DemoStoreOptions {
+  createCeremonyId?: () => string;
+  now?: () => number;
+}
 
-const challengeKey = (kind: StoredChallenge["kind"], userId: string): string =>
-  `${kind}:${userId}`;
+export const createDemoStore = ({
+  createCeremonyId = randomUUID,
+  now = Date.now,
+}: DemoStoreOptions = {}) => {
+  const ceremonies = new Map<string, StoredCeremony>();
+  const passkeys = new Map<Base64URLString, StoredPasskey>();
 
-const getUserPasskeys = (userId: string): StoredPasskey[] =>
-  [...passkeys.values()].filter((passkey) => passkey.userId === userId);
+  const purgeExpiredCeremonies = (currentTime: number): void => {
+    for (const [ceremonyId, ceremony] of ceremonies) {
+      if (ceremony.expiresAt <= currentTime) {
+        ceremonies.delete(ceremonyId);
+      }
+    }
+  };
 
-export const demoStore = {
-  consumeChallenge(kind: StoredChallenge["kind"], userId: string): string {
-    const key = challengeKey(kind, userId);
-    const stored = challenges.get(key);
-    challenges.delete(key);
+  const getCeremony = ({
+    ceremonyId,
+    kind,
+    userId,
+  }: CeremonyRef): StoredCeremony => {
+    const ceremony = ceremonies.get(ceremonyId);
 
-    if (!stored) {
-      throw new Error("No passkey challenge is pending.");
+    if (!ceremony) {
+      throw new Error("No matching passkey ceremony is pending.");
     }
 
-    if (stored.expiresAt <= Date.now()) {
-      throw new Error("The passkey challenge expired.");
+    if (ceremony.kind !== kind || ceremony.userId !== userId) {
+      throw new Error("The passkey ceremony does not match this request.");
     }
 
-    return stored.challenge;
-  },
-
-  getPasskey(credentialId: string): StoredPasskey | undefined {
-    return passkeys.get(credentialId);
-  },
-
-  getUser(): DemoUser {
-    return demoUser;
-  },
-
-  getUserPasskeys(): StoredPasskey[] {
-    return getUserPasskeys(demoUser.id);
-  },
-
-  saveChallenge(
-    kind: StoredChallenge["kind"],
-    userId: string,
-    challenge: string,
-    ttlMs: number
-  ): void {
-    challenges.set(challengeKey(kind, userId), {
-      challenge,
-      expiresAt: Date.now() + ttlMs,
-      kind,
-      userId,
-    });
-  },
-
-  savePasskey(passkey: StoredPasskey): void {
-    passkeys.set(passkey.credentialId, passkey);
-  },
-
-  updatePasskeyCounter(credentialId: string, counter: number): void {
-    const passkey = passkeys.get(credentialId);
-
-    if (!passkey) {
-      throw new Error("Passkey credential was not found.");
+    const currentTime = now();
+    if (ceremony.expiresAt <= currentTime) {
+      ceremonies.delete(ceremonyId);
+      throw new Error("The passkey ceremony expired.");
     }
 
-    passkeys.set(credentialId, {
-      ...passkey,
-      counter,
-    });
-  },
+    purgeExpiredCeremonies(currentTime);
+    return ceremony;
+  };
+
+  const getUserPasskeys = (userId: string): StoredPasskey[] =>
+    [...passkeys.values()].filter((passkey) => passkey.userId === userId);
+
+  return {
+    consumeCeremony(ceremony: CeremonyRef, expectedChallenge: string): void {
+      const storedCeremony = getCeremony(ceremony);
+
+      if (storedCeremony.challenge !== expectedChallenge) {
+        throw new Error("The passkey ceremony challenge does not match.");
+      }
+
+      ceremonies.delete(ceremony.ceremonyId);
+    },
+
+    createCeremony(
+      kind: CeremonyKind,
+      userId: string,
+      challenge: string,
+      ttlMs: number
+    ): string {
+      const currentTime = now();
+      purgeExpiredCeremonies(currentTime);
+
+      const ceremonyId = createCeremonyId();
+      if (ceremonies.has(ceremonyId)) {
+        throw new Error("The passkey ceremony identifier was not unique.");
+      }
+
+      ceremonies.set(ceremonyId, {
+        ceremonyId,
+        challenge,
+        expiresAt: currentTime + ttlMs,
+        kind,
+        userId,
+      });
+
+      return ceremonyId;
+    },
+
+    getCeremonyChallenge(ceremony: CeremonyRef): string {
+      return getCeremony(ceremony).challenge;
+    },
+
+    getPasskey(credentialId: string): StoredPasskey | undefined {
+      return passkeys.get(credentialId);
+    },
+
+    getUser(): DemoUser {
+      return demoUser;
+    },
+
+    getUserPasskeys(): StoredPasskey[] {
+      return getUserPasskeys(demoUser.id);
+    },
+
+    savePasskey(passkey: StoredPasskey): void {
+      passkeys.set(passkey.credentialId, passkey);
+    },
+
+    updatePasskeyCounter(credentialId: string, counter: number): void {
+      const passkey = passkeys.get(credentialId);
+
+      if (!passkey) {
+        throw new Error("Passkey credential was not found.");
+      }
+
+      passkeys.set(credentialId, {
+        ...passkey,
+        counter,
+      });
+    },
+  };
 };
+
+export type DemoStore = ReturnType<typeof createDemoStore>;
+
+export const demoStore = createDemoStore();

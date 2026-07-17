@@ -31,6 +31,7 @@
     "ios/*.swift",
     "ios/generated",
     "ios/rust",
+    "ios/Tests",
     "package.json",
     "README.md"
   ],
@@ -60,11 +61,12 @@
     "expo-module": "expo-module",
     "prepare": "expo-module prepare",
     "prepublishOnly": "expo-module prepublishOnly",
-    "test": "node --experimental-vm-modules ../../node_modules/jest/bin/jest.js --config jest.config.mjs",
-    "typecheck:test": "tsc -p tsconfig.test.json --noEmit"
+    "test": "pnpm build && node --experimental-vm-modules ../../node_modules/jest/bin/jest.js --config jest.config.mjs",
+    "typecheck:test": "pnpm build && tsc -p tsconfig.test.json --noEmit"
   },
   "devDependencies": {
     "@jest/globals": "^30.4.1",
+    "@simplewebauthn/server": "^13.3.2",
     "expo-module-scripts": "^56.0.3",
     "expo-modules-core": "^57.0.1",
     "typescript": "^6.0.3"
