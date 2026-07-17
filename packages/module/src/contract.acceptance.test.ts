@@ -72,6 +72,24 @@ const clientData = (
     })
   );
 
+const contractBoundary = Symbol("contractBoundary");
+type ContractBoundaryError = Error & { [contractBoundary]: true };
+
+const isContractBoundaryError = (
+  error: unknown
+): error is ContractBoundaryError =>
+  error instanceof Error &&
+  contractBoundary in error &&
+  error[contractBoundary] === true;
+
+const createContractBoundaryError = (
+  boundary: string,
+  cause: unknown
+): ContractBoundaryError =>
+  Object.assign(new Error(`${boundary} failed`, { cause }), {
+    [contractBoundary]: true as const,
+  });
+
 const atBoundary = async <Result>(
   boundary: string,
   operation: () => Promise<Result>
@@ -79,7 +97,11 @@ const atBoundary = async <Result>(
   try {
     return await operation();
   } catch (error) {
-    throw new Error(`${boundary} failed`, { cause: error });
+    if (isContractBoundaryError(error)) {
+      throw error;
+    }
+
+    throw createContractBoundaryError(boundary, error);
   }
 };
 
@@ -188,10 +210,14 @@ class VirtualPlatformAuthenticator {
 const runCeremonyContract = async (origin: string): Promise<void> => {
   const authenticator = new VirtualPlatformAuthenticator();
   nativeModule.create.mockImplementation((request) =>
-    Promise.resolve(authenticator.create(request))
+    atBoundary("native registration mapping", () =>
+      Promise.resolve(authenticator.create(request))
+    )
   );
   nativeModule.get.mockImplementation((request) =>
-    Promise.resolve(authenticator.get(request))
+    atBoundary("native authentication mapping", () =>
+      Promise.resolve(authenticator.get(request))
+    )
   );
 
   const registrationOptions = await generateRegistrationOptions({
