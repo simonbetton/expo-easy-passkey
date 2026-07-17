@@ -23,7 +23,7 @@ final class ExpoEasyPasskeyCeremonyAdapter: NSObject {
 
   func create(
     _ request: PasskeyCreateRequest,
-    policy: PasskeyRegistrationPolicy.Resolved
+    policy: PasskeyRegistrationPolicy.AttestationPreference
   ) async throws -> [String: Any] {
     guard Self.isSupported else {
       throw PasskeyUnsupportedException()
@@ -39,7 +39,7 @@ final class ExpoEasyPasskeyCeremonyAdapter: NSObject {
     )
 
     registrationRequest.displayName = request.userDisplayName
-    registrationRequest.attestationPreference = policy.attestationPreference
+    registrationRequest.attestationPreference = policy.kind
     applyUserVerification(request.userVerification, to: registrationRequest)
     try applyExcludedCredentials(request.excludeCredentials, to: registrationRequest)
 

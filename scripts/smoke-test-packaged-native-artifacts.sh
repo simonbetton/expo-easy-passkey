@@ -106,54 +106,8 @@ require_metadata_and_checksums() {
     exit 1
   }
 
-  python3 - "$PACKAGE_DIR" "$meta" "$PLATFORM" <<'PY'
-import hashlib
-import json
-import sys
-from pathlib import Path
-
-package_dir = Path(sys.argv[1])
-meta_path = Path(sys.argv[2])
-platform = sys.argv[3]
-meta = json.loads(meta_path.read_text(encoding="utf-8"))
-
-if meta.get("platform") not in {platform, "all"}:
-    raise SystemExit(f"Metadata platform {meta.get('platform')!r} does not cover {platform!r}")
-
-expected = {
-    "android": {
-        "android-arm64-v8a",
-        "android-armeabi-v7a",
-        "android-x86",
-        "android-x86_64",
-    },
-    "apple": {
-        "apple-ios-arm64",
-        "apple-ios-arm64_x86_64-simulator",
-    },
-}[platform]
-
-targets = meta.get("targets") or []
-ids = {t["id"] for t in targets}
-missing_ids = expected - ids
-if missing_ids:
-    raise SystemExit(f"Metadata missing required targets: {sorted(missing_ids)}")
-
-for target in targets:
-    if target["id"] not in expected:
-        continue
-    path = package_dir / target["path"]
-    if not path.is_file():
-        raise SystemExit(f"Missing required native artifact: {path}")
-    digest = hashlib.sha256(path.read_bytes()).hexdigest()
-    if digest != target["sha256"]:
-        raise SystemExit(
-            f"Stale or mismatched native artifact for {target['id']}: "
-            f"expected sha256 {target['sha256']}, got {digest}"
-        )
-
-print(f"Verified {len(expected)} {platform} artifact checksums against immutable metadata")
-PY
+  python3 "$ROOT_DIR/scripts/lib/verify-native-artifact-metadata.py" \
+    "$PACKAGE_DIR" "$meta" "$PLATFORM"
 }
 
 inspect_android() {

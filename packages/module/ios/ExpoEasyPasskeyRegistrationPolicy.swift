@@ -2,8 +2,9 @@ import AuthenticationServices
 import Foundation
 
 struct PasskeyRegistrationPolicy {
-  struct Resolved {
-    let attestationPreference: ASAuthorizationPublicKeyCredentialAttestationKind
+  /// Attestation preference mapped onto the AuthenticationServices registration request.
+  struct AttestationPreference {
+    let kind: ASAuthorizationPublicKeyCredentialAttestationKind
   }
 
   /// COSE algorithms AuthenticationServices platform passkeys can satisfy.
@@ -11,7 +12,7 @@ struct PasskeyRegistrationPolicy {
     -7 // ES256
   ]
 
-  static func resolve(_ request: PasskeyCreateRequest) throws -> Resolved {
+  static func resolve(_ request: PasskeyCreateRequest) throws -> AttestationPreference {
     try validateAuthenticatorAttachment(request.authenticatorAttachment)
     try validateResidentKey(
       residentKey: request.residentKey,
@@ -19,8 +20,8 @@ struct PasskeyRegistrationPolicy {
     )
     try validatePublicKeyAlgorithms(request.pubKeyCredParams)
 
-    return Resolved(
-      attestationPreference: try attestationPreference(for: request.attestation)
+    return AttestationPreference(
+      kind: try attestationPreference(for: request.attestation)
     )
   }
 
@@ -75,10 +76,19 @@ struct PasskeyRegistrationPolicy {
       )
     }
 
-    // Legacy requireResidentKey false means discoverable credentials are optional.
-    // Platform passkeys remain discoverable, which still satisfies that request.
-    // requireResidentKey true is also satisfied because platform passkeys are resident.
-    _ = requireResidentKey
+    acceptLegacyRequireResidentKeyAsPlatformDiscoverable(requireResidentKey)
+  }
+
+  /// Platform passkeys are always discoverable, so every legacy
+  /// `requireResidentKey` value is accepted as fixed platform-passkey semantics:
+  /// unset, optional (`false`), and required (`true`).
+  private static func acceptLegacyRequireResidentKeyAsPlatformDiscoverable(
+    _ requireResidentKey: Bool?
+  ) {
+    switch requireResidentKey {
+    case nil, false, true:
+      return
+    }
   }
 
   private static func validatePublicKeyAlgorithms(

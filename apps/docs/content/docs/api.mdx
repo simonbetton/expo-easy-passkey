@@ -128,6 +128,10 @@ const options = {
   },
   attestation: "none",
   timeout: 60_000,
+  // HTTPS origin for client-data expectations on platforms that use it.
+  // On Android, Credential Manager derives the native app origin from the APK
+  // signing certificate; this value does not override that platform origin.
+  // See Platforms for Android APK-key-hash verification and RP ID vs origin.
   origin: "https://example.com",
 } as const;
 ```
@@ -167,6 +171,9 @@ const options = {
   rpId: "example.com",
   userVerification: "preferred",
   timeout: 60_000,
+  // HTTPS origin for client-data expectations on platforms that use it.
+  // On Android, Credential Manager derives the native app origin; this value
+  // does not override it. See Platforms for APK-key-hash verification.
   origin: "https://example.com",
 } as const;
 ```

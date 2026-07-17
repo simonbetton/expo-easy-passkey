@@ -143,60 +143,8 @@ verify_platform_metadata() {
   local root="$1"
   local meta="$2"
   local platform="$3"
-  python3 - "$root" "$meta" "$platform" "$EXPECTED_SOURCE_COMMIT" <<'PY'
-import hashlib
-import json
-import sys
-from pathlib import Path
-
-root = Path(sys.argv[1])
-meta_path = Path(sys.argv[2])
-platform = sys.argv[3]
-expected_commit = sys.argv[4]
-meta = json.loads(meta_path.read_text(encoding="utf-8"))
-
-if meta.get("platform") not in {platform, "all"}:
-    raise SystemExit(f"{platform} metadata platform is {meta.get('platform')!r}")
-if meta.get("sourceCommit") != expected_commit:
-    raise SystemExit(
-        f"{platform} metadata sourceCommit {meta.get('sourceCommit')!r} "
-        f"does not match expected {expected_commit!r}"
-    )
-
-expected = {
-    "android": {
-        "android-arm64-v8a",
-        "android-armeabi-v7a",
-        "android-x86",
-        "android-x86_64",
-    },
-    "apple": {
-        "apple-ios-arm64",
-        "apple-ios-arm64_x86_64-simulator",
-    },
-}[platform]
-
-targets = meta.get("targets") or []
-ids = {t["id"] for t in targets}
-missing = expected - ids
-if missing:
-    raise SystemExit(f"{platform} metadata missing targets: {sorted(missing)}")
-
-for target in targets:
-    if target["id"] not in expected:
-        continue
-    path = root / target["path"]
-    if not path.is_file():
-        raise SystemExit(f"Missing trusted {platform} artifact: {path}")
-    digest = hashlib.sha256(path.read_bytes()).hexdigest()
-    if digest != target["sha256"]:
-        raise SystemExit(
-            f"Stale or mismatched trusted {platform} artifact for {target['id']}: "
-            f"expected sha256 {target['sha256']}, got {digest}"
-        )
-
-print(f"Verified trusted {platform} metadata and checksums")
-PY
+  python3 "$ROOT_DIR/scripts/lib/verify-native-artifact-metadata.py" \
+    "$root" "$meta" "$platform" "$EXPECTED_SOURCE_COMMIT"
 }
 
 wipe_package_natives() {

@@ -103,7 +103,7 @@ final class ExpoEasyPasskeyRegistrationPolicyTests: XCTestCase {
     }
   }
 
-  func testResolvedPolicyIncludesAttestationForNativeRequest() throws {
+  func testAttestationPreferenceIncludesMappedKindForNativeRequest() throws {
     let request = try createRequest([
       "attestation": "direct",
       "pubKeyCredParams": [
@@ -113,7 +113,7 @@ final class ExpoEasyPasskeyRegistrationPolicyTests: XCTestCase {
 
     let policy = try PasskeyRegistrationPolicy.resolve(request)
 
-    XCTAssertEqual(policy.attestationPreference, .direct)
+    XCTAssertEqual(policy.kind, .direct)
   }
 
   private func createRequest(_ overrides: [String: Any]) throws -> PasskeyCreateRequest {

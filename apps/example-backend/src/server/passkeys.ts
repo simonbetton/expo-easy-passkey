@@ -13,7 +13,7 @@ import { isoUint8Array } from "@simplewebauthn/server/helpers";
 
 import { relyingParty } from "./config.js";
 import { demoStore } from "./store.js";
-import type { DemoStore } from "./store.js";
+import type { CeremonyKind, DemoStore } from "./store.js";
 
 const supportedAlgorithmIDs = [-7, -257];
 
@@ -42,10 +42,54 @@ const defaultDependencies: PasskeyDependencies = {
   verifyRegistrationResponse,
 };
 
+const withHttpsOrigin = <T extends object>(options: T) => ({
+  ...options,
+  origin: relyingParty.origin,
+});
+
 export const createPasskeyService = (
   store: DemoStore,
   dependencies: PasskeyDependencies = defaultDependencies
 ) => {
+  const issueCeremonyOptions = async <T extends { challenge: string }>(
+    kind: CeremonyKind,
+    options: T
+  ) => {
+    const user = store.getUser();
+    const ceremonyId = store.createCeremony(
+      kind,
+      user.id,
+      options.challenge,
+      relyingParty.challengeTtlMs
+    );
+
+    return {
+      ceremonyId,
+      options: withHttpsOrigin(options),
+    };
+  };
+
+  /**
+   * Load the matching unexpired ceremony challenge, run verification, then
+   * atomically consume the record. Failed verification does not consume.
+   */
+  const verifyThenConsume = async <T>(
+    kind: CeremonyKind,
+    ceremonyId: string,
+    verify: (expectedChallenge: string) => Promise<T>
+  ): Promise<T> => {
+    const user = store.getUser();
+    const ceremony = {
+      ceremonyId,
+      kind,
+      userId: user.id,
+    };
+    const expectedChallenge = store.getCeremonyChallenge(ceremony);
+    const result = await verify(expectedChallenge);
+    store.consumeCeremony(ceremony, expectedChallenge);
+    return result;
+  };
+
   const getRegistrationOptions = async () => {
     const user = store.getUser();
     const options = await dependencies.generateRegistrationOptions({
@@ -67,20 +111,8 @@ export const createPasskeyService = (
       userID: isoUint8Array.fromUTF8String(user.webAuthnUserId),
       userName: user.email,
     });
-    const ceremonyId = store.createCeremony(
-      "registration",
-      user.id,
-      options.challenge,
-      relyingParty.challengeTtlMs
-    );
 
-    return {
-      ceremonyId,
-      options: {
-        ...options,
-        origin: relyingParty.origin,
-      },
-    };
+    return issueCeremonyOptions("registration", options);
   };
 
   const verifyRegistration = async ({
@@ -88,114 +120,94 @@ export const createPasskeyService = (
     response,
   }: CeremonyVerificationRequest<RegistrationResponseJSON>) => {
     const user = store.getUser();
-    const ceremony = {
-      ceremonyId,
-      kind: "registration" as const,
-      userId: user.id,
-    };
-    const expectedChallenge = store.getCeremonyChallenge(ceremony);
-    const verification = await dependencies.verifyRegistrationResponse({
-      expectedChallenge,
-      expectedOrigin: [...relyingParty.expectedOrigins],
-      expectedRPID: relyingParty.rpId,
-      response,
+
+    return verifyThenConsume("registration", ceremonyId, async (expectedChallenge) => {
+      const verification = await dependencies.verifyRegistrationResponse({
+        expectedChallenge,
+        expectedOrigin: [...relyingParty.expectedOrigins],
+        expectedRPID: relyingParty.rpId,
+        response,
+      });
+
+      if (!(verification.verified && verification.registrationInfo)) {
+        throw new Error("Passkey registration failed.");
+      }
+
+      const { credential, credentialBackedUp, credentialDeviceType } =
+        verification.registrationInfo;
+
+      store.savePasskey({
+        backedUp: credentialBackedUp,
+        counter: credential.counter,
+        credentialId: credential.id,
+        deviceType: credentialDeviceType,
+        publicKey: credential.publicKey,
+        transports: credential.transports,
+        userId: user.id,
+        webAuthnUserId: Buffer.from(user.webAuthnUserId, "utf-8").toString(
+          "base64url"
+        ),
+      });
+
+      return {
+        credentialId: credential.id,
+        verified: true as const,
+      };
     });
-
-    if (!(verification.verified && verification.registrationInfo)) {
-      throw new Error("Passkey registration failed.");
-    }
-
-    store.consumeCeremony(ceremony, expectedChallenge);
-
-    const { credential, credentialBackedUp, credentialDeviceType } =
-      verification.registrationInfo;
-
-    store.savePasskey({
-      backedUp: credentialBackedUp,
-      counter: credential.counter,
-      credentialId: credential.id,
-      deviceType: credentialDeviceType,
-      publicKey: credential.publicKey,
-      transports: credential.transports,
-      userId: user.id,
-      webAuthnUserId: Buffer.from(user.webAuthnUserId, "utf-8").toString(
-        "base64url"
-      ),
-    });
-
-    return {
-      credentialId: credential.id,
-      verified: true as const,
-    };
   };
 
   const getAuthenticationOptions = async () => {
-    const user = store.getUser();
     const options = await dependencies.generateAuthenticationOptions({
       rpID: relyingParty.rpId,
       timeout: 60_000,
       userVerification: "preferred",
     });
-    const ceremonyId = store.createCeremony(
-      "authentication",
-      user.id,
-      options.challenge,
-      relyingParty.challengeTtlMs
-    );
 
-    return {
-      ceremonyId,
-      options: {
-        ...options,
-        origin: relyingParty.origin,
-      },
-    };
+    return issueCeremonyOptions("authentication", options);
   };
 
   const verifyAuthentication = async ({
     ceremonyId,
     response,
   }: CeremonyVerificationRequest<AuthenticationResponseJSON>) => {
-    const user = store.getUser();
     const passkey = store.getPasskey(response.id);
 
     if (!passkey) {
       throw new Error("Passkey credential was not found.");
     }
 
-    const ceremony = {
+    return verifyThenConsume(
+      "authentication",
       ceremonyId,
-      kind: "authentication" as const,
-      userId: user.id,
-    };
-    const expectedChallenge = store.getCeremonyChallenge(ceremony);
-    const verification = await dependencies.verifyAuthenticationResponse({
-      credential: {
-        counter: passkey.counter,
-        id: passkey.credentialId,
-        publicKey: Uint8Array.from(passkey.publicKey),
-        transports: passkey.transports,
-      },
-      expectedChallenge,
-      expectedOrigin: [...relyingParty.expectedOrigins],
-      expectedRPID: relyingParty.rpId,
-      response,
-    });
+      async (expectedChallenge) => {
+        const verification = await dependencies.verifyAuthenticationResponse({
+          credential: {
+            counter: passkey.counter,
+            id: passkey.credentialId,
+            publicKey: Uint8Array.from(passkey.publicKey),
+            transports: passkey.transports,
+          },
+          expectedChallenge,
+          expectedOrigin: [...relyingParty.expectedOrigins],
+          expectedRPID: relyingParty.rpId,
+          response,
+        });
 
-    if (!verification.verified) {
-      throw new Error("Passkey authentication failed.");
-    }
+        if (!verification.verified) {
+          throw new Error("Passkey authentication failed.");
+        }
 
-    store.consumeCeremony(ceremony, expectedChallenge);
-    store.updatePasskeyCounter(
-      passkey.credentialId,
-      verification.authenticationInfo.newCounter
+        store.updatePasskeyCounter(
+          passkey.credentialId,
+          verification.authenticationInfo.newCounter
+        );
+
+        return {
+          session: demoSession(passkey.credentialId),
+          verified: true as const,
+        };
+      }
     );
-
-    return {
-      session: demoSession(passkey.credentialId),
-      verified: true as const,
-    };
   };
 
   return {

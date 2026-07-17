@@ -77,9 +77,8 @@ if [[ -z "$SOURCE_COMMIT" ]]; then
   SOURCE_COMMIT="$(git -C "$ROOT_DIR" rev-parse HEAD)"
 fi
 
-sha256_file() {
-  shasum -a 256 "$1" | awk '{print $1}'
-}
+# shellcheck source=scripts/lib/sha256.sh
+source "$ROOT_DIR/scripts/lib/sha256.sh"
 
 require_file() {
   local path="$1"

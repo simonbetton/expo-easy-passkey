@@ -369,6 +369,29 @@ describe("public package-to-relying-party contract", () => {
     nativeModule.getPlatform.mockReturnValue("android");
   });
 
+  it("documents that client origin does not override Android platform origins", async () => {
+    const { readFile } = await import("node:fs/promises");
+    const { fileURLToPath } = await import("node:url");
+    const typesPath = fileURLToPath(new URL("./types.ts", import.meta.url));
+    const apiDocsPath = fileURLToPath(
+      new URL("../../../apps/docs/content/docs/api.mdx", import.meta.url)
+    );
+    const [typesSource, apiDocs] = await Promise.all([
+      readFile(typesPath, "utf8"),
+      readFile(apiDocsPath, "utf8"),
+    ]);
+
+    expect(typesSource).toContain(
+      "Credential Manager derives the WebAuthn origin"
+    );
+    expect(typesSource).toContain("does not override that native app origin");
+    expect(typesSource).toContain(
+      "Origin validation is separate from RP ID validation"
+    );
+    expect(apiDocs).toContain("does not override");
+    expect(apiDocs).toContain("Credential Manager derives the native app origin");
+  });
+
   it.each(trustedOrigins)(
     "verifies registration and authentication with configured origin %s",
     async (origin) => {

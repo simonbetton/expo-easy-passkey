@@ -3,6 +3,7 @@
 # trusted outputs. Committed files are never treated as release evidence.
 set -euo pipefail
 
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 COMMITTED_ROOT=""
 GENERATED_ROOT=""
 PLATFORM=""
@@ -74,9 +75,8 @@ case "$PLATFORM" in
     ;;
 esac
 
-sha256_file() {
-  shasum -a 256 "$1" | awk '{print $1}'
-}
+# shellcheck source=scripts/lib/sha256.sh
+source "$ROOT_DIR/scripts/lib/sha256.sh"
 
 collect_targets() {
   case "$1" in
