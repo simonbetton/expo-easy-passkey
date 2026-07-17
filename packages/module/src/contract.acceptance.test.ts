@@ -372,13 +372,13 @@ describe("public package-to-relying-party contract", () => {
   it("documents that client origin does not override Android platform origins", async () => {
     const { readFile } = await import("node:fs/promises");
     const { fileURLToPath } = await import("node:url");
-    const typesPath = fileURLToPath(new URL("./types.ts", import.meta.url));
+    const typesPath = fileURLToPath(new URL("types.ts", import.meta.url));
     const apiDocsPath = fileURLToPath(
       new URL("../../../apps/docs/content/docs/api.mdx", import.meta.url)
     );
     const [typesSource, apiDocs] = await Promise.all([
-      readFile(typesPath, "utf8"),
-      readFile(apiDocsPath, "utf8"),
+      readFile(typesPath, "utf-8"),
+      readFile(apiDocsPath, "utf-8"),
     ]);
 
     expect(typesSource).toContain(
@@ -389,7 +389,9 @@ describe("public package-to-relying-party contract", () => {
       "Origin validation is separate from RP ID validation"
     );
     expect(apiDocs).toContain("does not override");
-    expect(apiDocs).toContain("Credential Manager derives the native app origin");
+    expect(apiDocs).toContain(
+      "Credential Manager derives the native app origin"
+    );
   });
 
   it.each(trustedOrigins)(
@@ -467,7 +469,11 @@ describe("iOS registration policy acceptance", () => {
     "rejects $label with ERR_PASSKEY_VALIDATION before ceremony completion",
     async ({ overrides }) => {
       await expect(
-        runCeremonyContract("https://example.com", "https://example.com", overrides)
+        runCeremonyContract(
+          "https://example.com",
+          "https://example.com",
+          overrides
+        )
       ).rejects.toMatchObject({
         cause: expect.objectContaining({
           code: "ERR_PASSKEY_VALIDATION",

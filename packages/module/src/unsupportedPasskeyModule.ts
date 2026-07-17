@@ -11,9 +11,8 @@ export const createUnsupportedPasskeyModule = (
   platform: PasskeyPlatform,
   message: string
 ): ExpoEasyPasskeyNativeModule => {
-  const rejectUnsupported = async (): Promise<never> => {
-    throw new PasskeyError(message, "ERR_PASSKEY_UNSUPPORTED");
-  };
+  const rejectUnsupported = (): Promise<never> =>
+    Promise.reject(new PasskeyError(message, "ERR_PASSKEY_UNSUPPORTED"));
 
   return {
     create: rejectUnsupported,

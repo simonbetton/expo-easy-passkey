@@ -100,12 +100,7 @@ const userVerificationValues = [
 ] as const;
 const attachmentValues = ["platform", "cross-platform"] as const;
 const residentKeyValues = ["discouraged", "preferred", "required"] as const;
-const attestationValues = [
-  "none",
-  "indirect",
-  "direct",
-  "enterprise",
-] as const;
+const attestationValues = ["none", "indirect", "direct", "enterprise"] as const;
 
 const validateOptionalEnum = (
   value: unknown,
@@ -213,10 +208,7 @@ const validateCreateOptions: (
     throw validationError("rp is required");
   }
 
-  if (
-    !isNonEmptyString(options.rp.id) ||
-    !isNonEmptyString(options.rp.name)
-  ) {
+  if (!isNonEmptyString(options.rp.id) || !isNonEmptyString(options.rp.name)) {
     throw validationError("rp.id and rp.name are required");
   }
 
@@ -350,7 +342,9 @@ export const createPasskeyApi = (
       return null;
     }
 
-    throw invalidResponse("native response userHandle must be a string or null");
+    throw invalidResponse(
+      "native response userHandle must be a string or null"
+    );
   };
 
   const assertRegistrationResponse = async (
@@ -366,7 +360,9 @@ export const createPasskeyApi = (
       normalizeResponseBase64Url(
         getString(response.response, "attestationObject")
       ),
-      normalizeResponseBase64Url(getString(response.response, "clientDataJSON")),
+      normalizeResponseBase64Url(
+        getString(response.response, "clientDataJSON")
+      ),
     ]);
 
     return {
@@ -404,7 +400,9 @@ export const createPasskeyApi = (
       normalizeResponseBase64Url(
         getString(response.response, "authenticatorData")
       ),
-      normalizeResponseBase64Url(getString(response.response, "clientDataJSON")),
+      normalizeResponseBase64Url(
+        getString(response.response, "clientDataJSON")
+      ),
       normalizeResponseBase64Url(getString(response.response, "signature")),
       normalizeOptionalUserHandle(userHandle),
     ]);
@@ -426,7 +424,8 @@ export const createPasskeyApi = (
 
   const isSupported = (): boolean => ExpoEasyPasskeyModule.isSupported();
 
-  const getPlatform = (): PasskeyPlatform => ExpoEasyPasskeyModule.getPlatform();
+  const getPlatform = (): PasskeyPlatform =>
+    ExpoEasyPasskeyModule.getPlatform();
 
   const getPasskeyAvailability = (): PasskeyAvailability => ({
     platform: getPlatform(),
@@ -434,7 +433,8 @@ export const createPasskeyApi = (
   });
 
   /** @deprecated Use getPasskeyAvailability for new code. */
-  const getPasskeyCapability = (): PasskeyCapability => getPasskeyAvailability();
+  const getPasskeyCapability = (): PasskeyCapability =>
+    getPasskeyAvailability();
 
   const getNativeCreateRequest = async (
     options: PublicKeyCredentialCreationOptionsJSON

@@ -51,7 +51,7 @@ export const createPasskeyService = (
   store: DemoStore,
   dependencies: PasskeyDependencies = defaultDependencies
 ) => {
-  const issueCeremonyOptions = async <T extends { challenge: string }>(
+  const issueCeremonyOptions = <T extends { challenge: string }>(
     kind: CeremonyKind,
     options: T
   ) => {
@@ -115,45 +115,49 @@ export const createPasskeyService = (
     return issueCeremonyOptions("registration", options);
   };
 
-  const verifyRegistration = async ({
+  const verifyRegistration = ({
     ceremonyId,
     response,
   }: CeremonyVerificationRequest<RegistrationResponseJSON>) => {
     const user = store.getUser();
 
-    return verifyThenConsume("registration", ceremonyId, async (expectedChallenge) => {
-      const verification = await dependencies.verifyRegistrationResponse({
-        expectedChallenge,
-        expectedOrigin: [...relyingParty.expectedOrigins],
-        expectedRPID: relyingParty.rpId,
-        response,
-      });
+    return verifyThenConsume(
+      "registration",
+      ceremonyId,
+      async (expectedChallenge) => {
+        const verification = await dependencies.verifyRegistrationResponse({
+          expectedChallenge,
+          expectedOrigin: [...relyingParty.expectedOrigins],
+          expectedRPID: relyingParty.rpId,
+          response,
+        });
 
-      if (!(verification.verified && verification.registrationInfo)) {
-        throw new Error("Passkey registration failed.");
+        if (!(verification.verified && verification.registrationInfo)) {
+          throw new Error("Passkey registration failed.");
+        }
+
+        const { credential, credentialBackedUp, credentialDeviceType } =
+          verification.registrationInfo;
+
+        store.savePasskey({
+          backedUp: credentialBackedUp,
+          counter: credential.counter,
+          credentialId: credential.id,
+          deviceType: credentialDeviceType,
+          publicKey: credential.publicKey,
+          transports: credential.transports,
+          userId: user.id,
+          webAuthnUserId: Buffer.from(user.webAuthnUserId, "utf-8").toString(
+            "base64url"
+          ),
+        });
+
+        return {
+          credentialId: credential.id,
+          verified: true as const,
+        };
       }
-
-      const { credential, credentialBackedUp, credentialDeviceType } =
-        verification.registrationInfo;
-
-      store.savePasskey({
-        backedUp: credentialBackedUp,
-        counter: credential.counter,
-        credentialId: credential.id,
-        deviceType: credentialDeviceType,
-        publicKey: credential.publicKey,
-        transports: credential.transports,
-        userId: user.id,
-        webAuthnUserId: Buffer.from(user.webAuthnUserId, "utf-8").toString(
-          "base64url"
-        ),
-      });
-
-      return {
-        credentialId: credential.id,
-        verified: true as const,
-      };
-    });
+    );
   };
 
   const getAuthenticationOptions = async () => {
@@ -166,7 +170,7 @@ export const createPasskeyService = (
     return issueCeremonyOptions("authentication", options);
   };
 
-  const verifyAuthentication = async ({
+  const verifyAuthentication = ({
     ceremonyId,
     response,
   }: CeremonyVerificationRequest<AuthenticationResponseJSON>) => {

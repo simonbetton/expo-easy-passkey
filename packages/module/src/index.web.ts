@@ -26,16 +26,30 @@ export type {
   UserVerificationRequirement,
 } from "./types.js";
 
-const api = createPasskeyApi(ExpoEasyPasskeyModule);
+const {
+  authenticateWithPasskey,
+  create,
+  createPasskey,
+  describeCeremony,
+  get,
+  getPasskeyAvailability,
+  getPasskeyCapability,
+  getPlatform,
+  isSupported,
+  normalizeChallenge,
+  validateRelyingPartyId,
+} = createPasskeyApi(ExpoEasyPasskeyModule);
 
-export const authenticateWithPasskey = api.authenticateWithPasskey;
-export const create = api.create;
-export const createPasskey = api.createPasskey;
-export const describeCeremony = api.describeCeremony;
-export const get = api.get;
-export const getPasskeyAvailability = api.getPasskeyAvailability;
-export const getPasskeyCapability = api.getPasskeyCapability;
-export const getPlatform = api.getPlatform;
-export const isSupported = api.isSupported;
-export const normalizeChallenge = api.normalizeChallenge;
-export const validateRelyingPartyId = api.validateRelyingPartyId;
+export {
+  authenticateWithPasskey,
+  create,
+  createPasskey,
+  describeCeremony,
+  get,
+  getPasskeyAvailability,
+  getPasskeyCapability,
+  getPlatform,
+  isSupported,
+  normalizeChallenge,
+  validateRelyingPartyId,
+};

@@ -8,13 +8,13 @@ import {
 } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 import { afterAll, beforeAll, describe, expect, it } from "@jest/globals";
 
 const require = createRequire(import.meta.url);
-const moduleRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
+const moduleRoot = path.join(import.meta.dirname, "..");
 const packageJson = require("../package.json") as {
   name: string;
   version: string;
@@ -95,14 +95,14 @@ run().catch((error) => {
 });
 `;
 
-type CeremonyReport = {
+interface CeremonyReport {
   ok: boolean;
   name?: string | null;
   code?: string | null;
   message?: string | null;
-};
+}
 
-type ProbeReport = {
+interface ProbeReport {
   importFailed?: boolean;
   name?: string | null;
   message?: string | null;
@@ -112,34 +112,37 @@ type ProbeReport = {
   supported?: boolean;
   create?: CeremonyReport | null;
   authenticate?: CeremonyReport | null;
-};
+}
 
 describe("unsupported runtime package contract", () => {
   let workspaceRoot = "";
 
   beforeAll(() => {
     workspaceRoot = mkdtempSync(
-      join(tmpdir(), "expo-easy-passkey-unsupported-")
+      path.join(tmpdir(), "expo-easy-passkey-unsupported-")
     );
     const build = spawnSync("pnpm", ["build"], {
       cwd: moduleRoot,
-      encoding: "utf8",
+      encoding: "utf-8",
     });
     expect(build.status).toBe(0);
 
     const pack = spawnSync("npm", ["pack", "--json"], {
       cwd: moduleRoot,
-      encoding: "utf8",
+      encoding: "utf-8",
     });
     expect(pack.status).toBe(0);
-    const packed = JSON.parse(pack.stdout) as Array<{ filename: string }>;
+    const packed = JSON.parse(pack.stdout) as { filename: string }[];
     const tarballName = packed[0]?.filename;
     expect(tarballName).toEqual(expect.any(String));
-    const tarballPath = join(moduleRoot, tarballName!);
-    const installRoot = join(workspaceRoot, "consumer");
+    if (!tarballName) {
+      throw new Error("npm pack did not report a tarball filename");
+    }
+    const tarballPath = path.join(moduleRoot, tarballName);
+    const installRoot = path.join(workspaceRoot, "consumer");
     mkdirSync(installRoot, { recursive: true });
     writeFileSync(
-      join(installRoot, "package.json"),
+      path.join(installRoot, "package.json"),
       JSON.stringify(
         {
           name: "expo-easy-passkey-unsupported-consumer",
@@ -153,7 +156,7 @@ describe("unsupported runtime package contract", () => {
 
     const install = spawnSync("npm", ["install", tarballPath], {
       cwd: installRoot,
-      encoding: "utf8",
+      encoding: "utf-8",
     });
     expect(install.status).toBe(0);
     expect(packageJson.name).toBe("expo-easy-passkey");
@@ -170,13 +173,13 @@ describe("unsupported runtime package contract", () => {
     conditions: string[];
     preload?: string;
   }): ProbeReport => {
-    const consumerRoot = join(workspaceRoot, "consumer");
-    const reportPath = join(
+    const consumerRoot = path.join(workspaceRoot, "consumer");
+    const reportPath = path.join(
       consumerRoot,
       `report-${Date.now()}-${Math.random()}.json`
     );
-    const optionsPath = join(consumerRoot, "ceremony-options.json");
-    const scriptPath = join(consumerRoot, "probe.cjs");
+    const optionsPath = path.join(consumerRoot, "ceremony-options.json");
+    const scriptPath = path.join(consumerRoot, "probe.cjs");
     writeFileSync(
       optionsPath,
       JSON.stringify({
@@ -195,16 +198,17 @@ describe("unsupported runtime package contract", () => {
     ];
     const result = spawnSync(process.execPath, nodeArgs, {
       cwd: consumerRoot,
-      encoding: "utf8",
+      encoding: "utf-8",
       env: process.env,
     });
 
     let report: ProbeReport;
     try {
-      report = JSON.parse(readFileSync(reportPath, "utf8")) as ProbeReport;
+      report = JSON.parse(readFileSync(reportPath, "utf-8")) as ProbeReport;
     } catch (error) {
       throw new Error(
-        `probe did not write a report under conditions ${args.conditions.join(",") || "(default)"}: ${error instanceof Error ? error.message : String(error)}\nstatus:${result.status}\nstdout:${result.stdout}\nstderr:${result.stderr}`
+        `probe did not write a report under conditions ${args.conditions.join(",") || "(default)"}: ${error instanceof Error ? error.message : String(error)}\nstatus:${result.status}\nstdout:${result.stdout}\nstderr:${result.stderr}`,
+        { cause: error }
       );
     }
 
@@ -239,8 +243,8 @@ describe("unsupported runtime package contract", () => {
       name: "PasskeyError",
       ok: false,
     });
-    expect(report.create?.message).toMatch(/web/i);
-    expect(report.create?.message).toMatch(/future/i);
+    expect(report.create?.message).toMatch(/web/iu);
+    expect(report.create?.message).toMatch(/future/iu);
   });
 
   it("imports in a browser-like environment with the web unsupported contract", () => {
@@ -261,9 +265,9 @@ describe("unsupported runtime package contract", () => {
   });
 
   it("fails at ceremony invocation when the native module is missing", () => {
-    const mockPath = join(workspaceRoot, "expo-modules-core-mock.mjs");
-    const loaderPath = join(workspaceRoot, "missing-native-loader.mjs");
-    const preloadPath = join(workspaceRoot, "register-missing-native.mjs");
+    const mockPath = path.join(workspaceRoot, "expo-modules-core-mock.mjs");
+    const loaderPath = path.join(workspaceRoot, "missing-native-loader.mjs");
+    const preloadPath = path.join(workspaceRoot, "register-missing-native.mjs");
 
     writeFileSync(
       mockPath,
@@ -321,6 +325,6 @@ register(pathToFileURL(${JSON.stringify(loaderPath)}).href);
       name: "PasskeyError",
       ok: false,
     });
-    expect(report.create?.message).toMatch(/development build|Expo Go/i);
+    expect(report.create?.message).toMatch(/development build|Expo Go/iu);
   });
 });
