@@ -134,6 +134,9 @@ importers:
         specifier: ^12.1.3
         version: 12.1.3
     devDependencies:
+      '@jest/globals':
+        specifier: ^30.4.1
+        version: 30.4.1
       '@types/node':
         specifier: ^26.0.1
         version: 26.0.1
@@ -156,6 +159,9 @@ importers:
       '@jest/globals':
         specifier: ^30.4.1
         version: 30.4.1
+      '@simplewebauthn/server':
+        specifier: ^13.3.2
+        version: 13.3.2
       expo-module-scripts:
         specifier: ^56.0.3
         version: 56.0.3(@babel/core@7.29.7)(@jest/transform@30.4.1)(@jest/types@30.4.1)(babel-jest@30.4.1(@babel/core@7.29.7))(eslint@9.39.4(jiti@2.7.0))(expo@57.0.1)(jest-util@30.4.1)(jest@30.4.2(@types/node@26.0.1))(prettier@2.8.8)(react-native@0.86.0(@babel/core@7.29.7)(@react-native/jest-preset@0.85.3(@babel/core@7.29.7)(react@19.2.7))(@types/react@19.2.17)(react@19.2.7))(react-test-renderer@19.2.3(react@19.2.7))(react@19.2.7)(typescript@6.0.3)
@@ -9889,7 +9895,7 @@ snapshots:
       postcss: 8.5.16
       resolve-from: 5.0.0
     optionalDependencies:
-      expo: 57.0.1(@babel/core@7.29.7)(@expo/dom-webview@57.0.0)(react-dom@19.2.7(react@19.2.7))(react-native@0.86.0(@babel/core@7.29.7)(@react-native/jest-preset@0.85.3(@babel/core@7.29.7)(react@19.2.7))(@types/react@19.2.17)(react@19.2.7))(react@19.2.7)(typescript@6.0.3)
+      expo: 57.0.1(@babel/core@7.29.7)(@expo/dom-webview@57.0.0)(react-dom@19.2.7(react@19.2.7))(react-native@0.86.0(@babel/core@7.29.7)(@types/react@19.2.17)(react@19.2.7))(react@19.2.7)(typescript@6.0.3)
     transitivePeerDependencies:
       - bufferutil
       - supports-color
@@ -12651,7 +12657,7 @@ snapshots:
       react-refresh: 0.14.2
     optionalDependencies:
       '@babel/runtime': 7.29.7
-      expo: 57.0.1(@babel/core@7.29.7)(@expo/dom-webview@57.0.0)(react-dom@19.2.7(react@19.2.7))(react-native@0.86.0(@babel/core@7.29.7)(@react-native/jest-preset@0.85.3(@babel/core@7.29.7)(react@19.2.7))(@types/react@19.2.17)(react@19.2.7))(react@19.2.7)(typescript@6.0.3)
+      expo: 57.0.1(@babel/core@7.29.7)(@expo/dom-webview@57.0.0)(react-dom@19.2.7(react@19.2.7))(react-native@0.86.0(@babel/core@7.29.7)(@types/react@19.2.17)(react@19.2.7))(react@19.2.7)(typescript@6.0.3)
     transitivePeerDependencies:
       - '@babel/core'
       - supports-color
@@ -13779,7 +13785,7 @@ snapshots:
 
   expo-keep-awake@57.0.0(expo@57.0.1)(react@19.2.7):
     dependencies:
-      expo: 57.0.1(@babel/core@7.29.7)(@expo/dom-webview@57.0.0)(react-dom@19.2.7(react@19.2.7))(react-native@0.86.0(@babel/core@7.29.7)(@react-native/jest-preset@0.85.3(@babel/core@7.29.7)(react@19.2.7))(@types/react@19.2.17)(react@19.2.7))(react@19.2.7)(typescript@6.0.3)
+      expo: 57.0.1(@babel/core@7.29.7)(@expo/dom-webview@57.0.0)(react-dom@19.2.7(react@19.2.7))(react-native@0.86.0(@babel/core@7.29.7)(@types/react@19.2.17)(react@19.2.7))(react@19.2.7)(typescript@6.0.3)
       react: 19.2.7
 
   expo-module-scripts@56.0.3(@babel/core@7.29.7)(@jest/transform@30.4.1)(@jest/types@30.4.1)(babel-jest@30.4.1(@babel/core@7.29.7))(eslint@9.39.4(jiti@2.7.0))(expo@57.0.1)(jest-util@30.4.1)(jest@30.4.2(@types/node@26.0.1))(prettier@2.8.8)(react-native@0.86.0(@babel/core@7.29.7)(@react-native/jest-preset@0.85.3(@babel/core@7.29.7)(react@19.2.7))(@types/react@19.2.17)(react@19.2.7))(react-test-renderer@19.2.3(react@19.2.7))(react@19.2.7)(typescript@6.0.3):

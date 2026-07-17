@@ -96,6 +96,14 @@ Android passkey verification currently expects both `delegate_permission/common.
 
 Debug, preview, and production builds usually have different signing certificates. Add each fingerprint you plan to test.
 
+Credential Manager derives the WebAuthn origin from the installed APK's signing certificate; app JavaScript does not choose it. Convert the 32 raw SHA-256 fingerprint bytes to unpadded base64url and verify the resulting exact origin:
+
+```txt
+android:apk-key-hash:<unpadded-base64url-certificate-fingerprint>
+```
+
+The example backend performs this conversion for every comma-separated `ANDROID_SHA256_CERT_FINGERPRINTS` value and combines the results with its HTTPS origin. Keep this allowlist in trusted server configuration. Never add an origin from ceremony request data.
+
 ## WebAuthn options
 
 Your registration options should use the same relying-party domain:
@@ -123,6 +131,27 @@ const authenticationOptions = {
 ```
 
 Use the domain only. `rp.id` and `rpId` must not include `https://`, a path, or a port.
+
+The RP ID is separate from origin validation. On Android, `rp.id` remains the associated domain while the verified origin is the APK-key-hash value derived by Credential Manager.
+
+## iOS registration policy
+
+iOS registration uses AuthenticationServices platform passkeys only. Unsupported relying-party constraints fail with `ERR_PASSKEY_VALIDATION` before the system passkey UI appears.
+
+Reachable behavior:
+
+- `attestation` values `none`, `indirect`, `direct`, and `enterprise` are mapped onto the AuthenticationServices registration request.
+- Registration proceeds only when `pubKeyCredParams` is empty or includes ES256 (`alg: -7`). Empty parameter lists use the platform default, which remains ES256.
+- `authenticatorSelection.authenticatorAttachment` may be omitted or set to `platform`. `cross-platform` is rejected until security-key registration is implemented.
+- Platform passkeys are always discoverable. `residentKey` values `preferred` and `required`, and legacy `requireResidentKey` true or false, are accepted as that fixed semantics. `residentKey: "discouraged"` is rejected as incompatible.
+
+## Web and unsupported runtimes
+
+Web, server rendering, and other non-native runtimes can import the package safely. Capability detection returns `{ supported: false, platform: "web" }` on web. Registration and authentication reject with `ERR_PASSKEY_UNSUPPORTED`.
+
+Browser WebAuthn ceremonies are intentionally out of scope. Treat web support as a documented unsupported fallback until a future release adds browser ceremonies.
+
+Expo Go also cannot load this native module. Import and capability checks succeed; ceremony methods reject with `ERR_PASSKEY_UNSUPPORTED` and tell you to use a development build or production build.
 
 ## Device testing
 

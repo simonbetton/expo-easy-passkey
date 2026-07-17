@@ -12,6 +12,7 @@ import {
   verifyAuthentication,
   verifyRegistration,
 } from "./server/passkeys.js";
+import type { CeremonyVerificationRequest } from "./server/passkeys.js";
 import { androidAssetLinks, appleAppSiteAssociation } from "./server/trust.js";
 
 const routes = [
@@ -48,7 +49,9 @@ const app = new Elysia()
     async ({ body }) => {
       try {
         return jsonResponse(
-          await verifyRegistration(body as RegistrationResponseJSON)
+          await verifyRegistration(
+            body as CeremonyVerificationRequest<RegistrationResponseJSON>
+          )
         );
       } catch (error) {
         return errorResponse(error);
@@ -70,7 +73,9 @@ const app = new Elysia()
     async ({ body }) => {
       try {
         return jsonResponse(
-          await verifyAuthentication(body as AuthenticationResponseJSON)
+          await verifyAuthentication(
+            body as CeremonyVerificationRequest<AuthenticationResponseJSON>
+          )
         );
       } catch (error) {
         return errorResponse(error);

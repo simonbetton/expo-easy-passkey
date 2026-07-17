@@ -26,7 +26,7 @@ pnpm --filter @repo/example run ios
 
 The backend example uses in-memory storage. It demonstrates challenge and credential handling, but it is not durable across Vercel cold starts, multiple function instances, or redeploys.
 
-For local development, the backend can run on your machine, but real native passkey ceremonies still need `rp.id` and `origin` to match an associated domain trusted by iOS and Android. Keep `PASSKEY_RP_ID` set to your associated domain, and use a tunnel or hosted URL if the device must reach your local backend.
+For local development, the backend can run on your machine, but real native passkey ceremonies still need `rp.id` to remain the associated domain. iOS uses the HTTPS relying-party origin; Android Credential Manager derives an APK-key-hash origin from the installed signing certificate. Keep `PASSKEY_RP_ID` set to your associated domain, configure every trusted Android fingerprint on the backend, and use a tunnel or hosted URL if the device must reach your local API.
 
 ## API client
 
@@ -72,10 +72,15 @@ export function AddPasskeyButton() {
     setMessage(null);
 
     try {
-      const options = await postJson("/passkeys/register/options");
+      const { ceremonyId, options } = await postJson(
+        "/passkeys/register/options"
+      );
       const credential = await createPasskey(options);
 
-      await postJson("/passkeys/register/verify", credential);
+      await postJson("/passkeys/register/verify", {
+        ceremonyId,
+        response: credential,
+      });
       setMessage("Passkey added.");
     } catch (error) {
       if (
@@ -122,12 +127,14 @@ export function PasskeySignInButton() {
 
   const signIn = async () => {
     try {
-      const options = await postJson("/passkeys/authenticate/options");
-      const assertion = await authenticateWithPasskey(options);
-      const session = await postJson(
-        "/passkeys/authenticate/verify",
-        assertion
+      const { ceremonyId, options } = await postJson(
+        "/passkeys/authenticate/options"
       );
+      const assertion = await authenticateWithPasskey(options);
+      const session = await postJson("/passkeys/authenticate/verify", {
+        ceremonyId,
+        response: assertion,
+      });
 
       console.log("Signed in", session);
     } catch (error) {
@@ -163,12 +170,16 @@ import { authenticateWithPasskey } from "expo-easy-passkey";
 import { postJson } from "./api";
 
 export async function signInForEmail(email: string) {
-  const options = await postJson("/passkeys/authenticate/options", { email });
+  const { ceremonyId, options } = await postJson(
+    "/passkeys/authenticate/options",
+    { email }
+  );
   const assertion = await authenticateWithPasskey(options);
 
   return postJson("/passkeys/authenticate/verify", {
+    ceremonyId,
     email,
-    assertion,
+    response: assertion,
   });
 }
 ```
@@ -177,16 +188,19 @@ Server response for the options request:
 
 ```json
 {
-  "challenge": "YXV0aGVudGljYXRpb24tY2hhbGxlbmdl",
-  "rpId": "example.com",
-  "allowCredentials": [
-    {
-      "id": "Y3JlZGVudGlhbF9pZA",
-      "type": "public-key",
-      "transports": ["internal"]
-    }
-  ],
-  "userVerification": "required"
+  "ceremonyId": "550e8400-e29b-41d4-a716-446655440000",
+  "options": {
+    "challenge": "YXV0aGVudGljYXRpb24tY2hhbGxlbmdl",
+    "rpId": "example.com",
+    "allowCredentials": [
+      {
+        "id": "Y3JlZGVudGlhbF9pZA",
+        "type": "public-key",
+        "transports": ["internal"]
+      }
+    ],
+    "userVerification": "required"
+  }
 }
 ```
 

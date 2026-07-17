@@ -39,7 +39,7 @@ You must also host platform association files:
 - iOS: `/.well-known/apple-app-site-association`
 - Android: `/.well-known/assetlinks.json`
 
-Expo Go is not supported because passkeys require custom native modules. Use a development build or production build.
+Expo Go is not supported because passkeys require custom native modules. Use a development build or production build. Web and SSR imports are safe for capability detection; ceremonies reject with `ERR_PASSKEY_UNSUPPORTED` until browser WebAuthn support is added.
 
 ## Run the Example App
 
@@ -49,7 +49,7 @@ The example app calls `apps/example-backend` for registration and authentication
 2. Set `expo.ios.bundleIdentifier` to a bundle ID registered to that team.
 3. Set the plugin `domains` entry to your relying-party domain, for example `login.example.com`.
 4. Start or deploy `apps/example-backend` on that domain with matching `PASSKEY_RP_ID` and `PASSKEY_ORIGIN` values.
-5. Set the backend trust env vars so it serves `/.well-known/apple-app-site-association` and `/.well-known/assetlinks.json` for the installed app build.
+5. Set the backend trust env vars so it serves `/.well-known/apple-app-site-association` and `/.well-known/assetlinks.json` for the installed app build. Include every trusted Android signing fingerprint in `ANDROID_SHA256_CERT_FINGERPRINTS`; the backend derives the exact Credential Manager APK-key-hash origins used for verification.
 6. Set `EXPO_PUBLIC_PASSKEY_API_BASE_URL` for `apps/example` if the backend is not hosted at the default demo URL.
 
 Then rebuild the native app:
@@ -87,7 +87,7 @@ cargo test --workspace
 
 `pnpm install` installs lefthook. The pre-push hook runs `pnpm verify`, which mirrors the CI verify gate.
 
-Run `pnpm bindgen:check` after changing `crates/passkey-ffi` to regenerate Swift/Kotlin UniFFI bindings and fail if committed bindings drift. Run `pnpm build:rust-artifacts` from macOS before packaging a release so the npm package includes the iOS xcframework and Android shared libraries used by the UniFFI runtime.
+Run `pnpm bindgen:check` after changing `crates/passkey-ffi` to regenerate Swift/Kotlin UniFFI bindings and fail if committed bindings drift. Run `pnpm build:rust-artifacts` (macOS for the full matrix, or `android` / `apple` alone) when you need local native libraries. Release CI rebuilds those artifacts from the release commit, smoke-tests the packed package, fails when committed binaries drift from trusted outputs, and publishes only the staged trusted natives with release evidence and npm provenance.
 
 ## Testing
 
@@ -99,4 +99,4 @@ The test suite covers:
 - Expo module bridge wiring.
 - Native request and response mapping.
 
-Manual real-device E2E is still required before release because platform passkey UI depends on OS accounts, app signing, associated domains, Digital Asset Links, and user verification.
+Manual real-device E2E is still required before release because platform passkey UI depends on OS accounts, app signing, associated domains, Digital Asset Links, and user verification. Maintainers should follow the acceptance plan in `Testing` and the Release evidence checklist in `Releasing` so contract, native artifact, web import, and device checks all block publication together.

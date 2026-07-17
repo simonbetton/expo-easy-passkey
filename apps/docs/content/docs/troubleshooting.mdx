@@ -7,7 +7,7 @@ Start with the step that failed. If the system passkey sheet never appears, chec
 
 ## Expo Go
 
-Expo Go cannot load this native module. Use a development build or production build.
+Expo Go cannot load this native module. Importing the package and calling `getPasskeyAvailability` still work; ceremony methods reject with `ERR_PASSKEY_UNSUPPORTED` and point you to a development build or production build.
 
 ```sh
 npx expo run:ios
@@ -21,12 +21,17 @@ eas build --profile development --platform ios
 eas build --profile development --platform android
 ```
 
+## Web
+
+Web and SSR imports are supported for capability detection only. `getPasskeyAvailability()` returns `{ supported: false, platform: "web" }`, and ceremony methods reject with `ERR_PASSKEY_UNSUPPORTED`. Browser WebAuthn ceremonies are a future feature, not part of the current package contract.
+
 ## `ERR_PASSKEY_UNSUPPORTED`
 
 The platform cannot run passkey ceremonies.
 
 Check:
 
+- The app is not running on web (browser WebAuthn is not implemented yet).
 - The app is not running in Expo Go.
 - The device has a supported OS version.
 - The device has screen lock, biometrics, or another user verification method enabled.
@@ -86,6 +91,8 @@ authenticatorSelection: {
 }
 ```
 
+On iOS, unsupported registration constraints such as `authenticatorAttachment: "cross-platform"`, `residentKey: "discouraged"`, or `pubKeyCredParams` without ES256 (`alg: -7`) fail with `ERR_PASSKEY_VALIDATION` before biometric or device-authentication UI. See [Platforms](/docs/platform) for the full reachable attestation, algorithm, attachment, and resident-key policy.
+
 ## Associations
 
 If native UI fails before a credential is created, verify:
@@ -115,13 +122,13 @@ If native registration or authentication succeeds but the server rejects the res
 
 - The challenge sent to the app matches the challenge stored on the server.
 - The challenge was not reused.
-- `expectedOrigin` matches the origin in `clientDataJSON`.
+- `expectedOrigin` contains the exact origin in `clientDataJSON`.
 - `expectedRPID` matches the same RP ID domain as `rp.id` and `rpId`.
 - Credential IDs are encoded consistently, usually base64url.
 - The server stores the credential public key after registration.
 - The server updates the sign counter after authentication if your verifier returns one.
 
-For native apps, `origin` should be the web origin for your relying party, such as `https://example.com`.
+For iOS and web ceremonies, the expected origin is normally the HTTPS relying-party origin, such as `https://example.com`. Android Credential Manager derives an `android:apk-key-hash:` origin from the installed app's signing certificate. Add only explicitly trusted certificate-derived Android origins to the server allowlist; keep `expectedRPID` as the associated domain.
 
 ## Invalid response
 

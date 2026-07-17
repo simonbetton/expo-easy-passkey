@@ -69,9 +69,9 @@ const styles = StyleSheet.create({
 });
 
 const runRegistration = async () => {
-  const options = await fetchRegistrationOptions();
+  const { ceremonyId, options } = await fetchRegistrationOptions();
   const credential = await createPasskey(options);
-  const verification = await verifyRegistration(credential);
+  const verification = await verifyRegistration(ceremonyId, credential);
 
   return {
     ceremony: "registration",
@@ -80,9 +80,9 @@ const runRegistration = async () => {
 };
 
 const runAuthentication = async () => {
-  const options = await fetchAuthenticationOptions();
+  const { ceremonyId, options } = await fetchAuthenticationOptions();
   const assertion = await authenticateWithPasskey(options);
-  const verification = await verifyAuthentication(assertion);
+  const verification = await verifyAuthentication(ceremonyId, assertion);
 
   return {
     ceremony: "authentication",
