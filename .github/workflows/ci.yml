@@ -38,8 +38,10 @@ jobs:
           distribution: temurin
           java-version: 21
       - uses: android-actions/setup-android@v3
+      - uses: dtolnay/rust-toolchain@stable
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @repo/example exec expo prebuild --platform android --no-install
+      - run: pnpm test:native:android
       - run: ./gradlew assembleDebug
         working-directory: apps/example/android
         env:
@@ -59,8 +61,7 @@ jobs:
       - run: pnpm --filter @repo/example exec expo prebuild --platform ios --no-install
         env:
           NODE_ENV: development
-      - run: pod install
-        working-directory: apps/example/ios
+      - run: pnpm test:native:ios
       - run: xcodebuild -workspace "ExpoEasyPasskeyExample.xcworkspace" -scheme "ExpoEasyPasskeyExample" -configuration Debug -sdk iphonesimulator -destination "generic/platform=iOS Simulator" CODE_SIGNING_ALLOWED=NO build
         working-directory: apps/example/ios
         env:

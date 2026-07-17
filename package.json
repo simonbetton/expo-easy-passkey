@@ -22,6 +22,8 @@
     "rust:clippy": "cargo clippy --workspace --all-targets -- -D warnings",
     "rust:fmt": "cargo fmt --check",
     "test": "pnpm test:js && pnpm test:rust",
+    "test:native:android": "bash scripts/test-android-module.sh",
+    "test:native:ios": "bash scripts/test-ios-module.sh",
     "test:js": "pnpm -r --if-present test",
     "test:rust": "cargo test --workspace",
     "typecheck": "npx tsgo --noEmit && pnpm -r --if-present typecheck:test",

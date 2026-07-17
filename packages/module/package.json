@@ -65,6 +65,7 @@
   },
   "devDependencies": {
     "@jest/globals": "^30.4.1",
+    "@simplewebauthn/server": "^13.3.2",
     "expo-module-scripts": "^56.0.3",
     "expo-modules-core": "^57.0.1",
     "typescript": "^6.0.3"
