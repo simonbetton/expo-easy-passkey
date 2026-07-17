@@ -17,5 +17,6 @@ cargo build \
 PASSKEY_RUST_TEST_LIBRARY_PATH="$RUST_LIBRARY_DIR" \
   "$ANDROID_DIR/gradlew" \
   -p "$ANDROID_DIR" \
+  :expo-easy-passkey:cleanTestDebugUnitTest \
   :expo-easy-passkey:testDebugUnitTest \
   --tests "expo.modules.easypasskey.PasskeyRequestMapperTest"

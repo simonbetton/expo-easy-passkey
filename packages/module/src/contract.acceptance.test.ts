@@ -40,7 +40,8 @@ jest.unstable_mockModule("expo-modules-core", () => ({
   requireNativeModule: jest.fn(() => nativeModule),
 }));
 
-const { authenticateWithPasskey, createPasskey } = await import("./index.js");
+const { authenticateWithPasskey, createPasskey } =
+  await import("expo-easy-passkey");
 
 const rpId = "example.com";
 const userId = new TextEncoder().encode("contract-test-user");
@@ -70,6 +71,17 @@ const clientData = (
       type,
     })
   );
+
+const atBoundary = async <Result>(
+  boundary: string,
+  operation: () => Promise<Result>
+): Promise<Result> => {
+  try {
+    return await operation();
+  } catch (error) {
+    throw new Error(`${boundary} failed`, { cause: error });
+  }
+};
 
 class VirtualPlatformAuthenticator {
   readonly credentialId = Buffer.from("expo-easy-passkey-contract");
@@ -196,51 +208,68 @@ const runCeremonyContract = async (origin: string): Promise<void> => {
     userID: userId,
     userName: "contract@example.com",
   });
-  const registrationResponse = await createPasskey({
-    ...registrationOptions,
-    origin,
-  } as PublicKeyCredentialCreationOptionsJSON);
-  const registration = await verifyRegistrationResponse({
-    expectedChallenge: registrationOptions.challenge,
-    expectedOrigin: origin,
-    expectedRPID: rpId,
-    requireUserVerification: true,
-    response: registrationResponse,
-    supportedAlgorithmIDs: [-7],
-  });
+  const registrationResponse = await atBoundary(
+    "public package registration",
+    () =>
+      createPasskey({
+        ...registrationOptions,
+        origin,
+      } as PublicKeyCredentialCreationOptionsJSON)
+  );
+  const credential = await atBoundary(
+    "relying-party registration verification",
+    async () => {
+      const registration = await verifyRegistrationResponse({
+        expectedChallenge: registrationOptions.challenge,
+        expectedOrigin: origin,
+        expectedRPID: rpId,
+        requireUserVerification: true,
+        response: registrationResponse,
+        supportedAlgorithmIDs: [-7],
+      });
 
-  expect(registration.verified).toBe(true);
-  expect(registration.registrationInfo?.origin).toBe(origin);
+      expect(registration.verified).toBe(true);
+      expect(registration.registrationInfo?.origin).toBe(origin);
 
-  if (!registration.registrationInfo) {
-    throw new Error("registration did not return credential information");
-  }
+      if (!registration.registrationInfo) {
+        throw new Error("registration did not return credential information");
+      }
+
+      return registration.registrationInfo.credential;
+    }
+  );
 
   const authenticationOptions = await generateAuthenticationOptions({
     allowCredentials: [
       {
-        id: registration.registrationInfo.credential.id,
-        transports: registration.registrationInfo.credential.transports,
+        id: credential.id,
+        transports: credential.transports,
       },
     ],
     rpID: rpId,
     userVerification: "required",
   });
-  const authenticationResponse = await authenticateWithPasskey({
-    ...authenticationOptions,
-    origin,
-  } as PublicKeyCredentialRequestOptionsJSON);
-  const authentication = await verifyAuthenticationResponse({
-    credential: registration.registrationInfo.credential,
-    expectedChallenge: authenticationOptions.challenge,
-    expectedOrigin: origin,
-    expectedRPID: rpId,
-    requireUserVerification: true,
-    response: authenticationResponse,
-  });
+  const authenticationResponse = await atBoundary(
+    "public package authentication",
+    () =>
+      authenticateWithPasskey({
+        ...authenticationOptions,
+        origin,
+      } as PublicKeyCredentialRequestOptionsJSON)
+  );
+  await atBoundary("relying-party authentication verification", async () => {
+    const authentication = await verifyAuthenticationResponse({
+      credential,
+      expectedChallenge: authenticationOptions.challenge,
+      expectedOrigin: origin,
+      expectedRPID: rpId,
+      requireUserVerification: true,
+      response: authenticationResponse,
+    });
 
-  expect(authentication.verified).toBe(true);
-  expect(authentication.authenticationInfo.origin).toBe(origin);
+    expect(authentication.verified).toBe(true);
+    expect(authentication.authenticationInfo.origin).toBe(origin);
+  });
 };
 
 describe("public package-to-relying-party contract", () => {

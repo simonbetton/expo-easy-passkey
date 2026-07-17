@@ -40,7 +40,6 @@ android {
 
   testOptions {
     unitTests.all {
-      outputs.upToDateWhen { false }
       def rustLibraryPath = System.getenv("PASSKEY_RUST_TEST_LIBRARY_PATH")
       if (rustLibraryPath) {
         systemProperty "jna.library.path", rustLibraryPath
