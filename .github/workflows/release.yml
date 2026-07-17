@@ -44,6 +44,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: android-native-artifacts
+          # upload-artifact roots at the LCA of these paths (packages/module).
+          include-hidden-files: true
           path: |
             packages/module/android/src/main/jniLibs
             packages/module/.rust-artifacts/android-native-artifacts.json
@@ -69,6 +71,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: apple-native-artifacts
+          # upload-artifact roots at the LCA of these paths (packages/module).
+          include-hidden-files: true
           path: |
             packages/module/ios/rust
             packages/module/.rust-artifacts/apple-native-artifacts.json
@@ -99,7 +103,8 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: android-native-artifacts
-          path: .
+          # Artifact root is packages/module (upload-artifact LCA).
+          path: packages/module
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter expo-easy-passkey build
@@ -127,7 +132,8 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: apple-native-artifacts
-          path: .
+          # Artifact root is packages/module (upload-artifact LCA).
+          path: packages/module
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter expo-easy-passkey build
@@ -160,14 +166,14 @@ jobs:
         run: >
           bash scripts/check-native-artifact-drift.sh
           --committed-root packages/module
-          --generated-root "${{ runner.temp }}/trusted-android/packages/module"
+          --generated-root "${{ runner.temp }}/trusted-android"
           --platform android
 
       - name: Compare committed Apple natives to trusted build outputs
         run: >
           bash scripts/check-native-artifact-drift.sh
           --committed-root packages/module
-          --generated-root "${{ runner.temp }}/trusted-apple/packages/module"
+          --generated-root "${{ runner.temp }}/trusted-apple"
           --platform apple
 
   release:
@@ -207,8 +213,8 @@ jobs:
         run: >
           bash scripts/prepare-trusted-native-artifacts.sh
           --package-dir packages/module
-          --android-from "${{ runner.temp }}/trusted-android/packages/module"
-          --apple-from "${{ runner.temp }}/trusted-apple/packages/module"
+          --android-from "${{ runner.temp }}/trusted-android"
+          --apple-from "${{ runner.temp }}/trusted-apple"
           --expected-source-commit "${{ github.sha }}"
           --evidence-output packages/module/.rust-artifacts/release-evidence.json
 
@@ -216,6 +222,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: release-native-evidence
+          include-hidden-files: true
           path: packages/module/.rust-artifacts/release-evidence.json
           if-no-files-found: error
           retention-days: 30
