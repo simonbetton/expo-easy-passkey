@@ -199,40 +199,37 @@ mkdir -p "$LIVE_META_DIR" "$PACKAGE_DIR/.rust-artifacts"
 record_metadata "$PACKAGE_DIR" android "$LIVE_META_DIR/android-native-artifacts.json"
 cp "$LIVE_META_DIR/android-native-artifacts.json" "$PACKAGE_DIR/.rust-artifacts/"
 
-if [[ "$(uname -s)" == "Linux" ]]; then
+# Inspect + pack into a consumer on every host. Android FFI dlopen needs an NDK
+# sysroot and is exercised by the release smoke-android job (ANDROID_NDK_HOME).
+android_smoke_args=(
+  --platform android
+  --package-dir "$PACKAGE_DIR"
+  --work-dir "$FIXTURE_ROOT/work-live-android"
+  --skip-ffi
+)
+if ! "$SCRIPT" "${android_smoke_args[@]}"; then
+  fail "live Android inspect/pack smoke test should pass"
+fi
+consumer="$FIXTURE_ROOT/work-live-android/android-consumer"
+installed="$consumer/node_modules/expo-easy-passkey"
+for abi in arm64-v8a armeabi-v7a x86 x86_64; do
+  [[ -f "$installed/android/src/main/jniLibs/$abi/libexpo_easy_passkey_ffi.so" ]] \
+    || fail "Android consumer missing packed ABI $abi"
+done
+if [[ -L "$installed" ]]; then
+  target="$(readlink "$installed")"
+  [[ "$target" != *"/packages/module" ]] || fail "Android consumer must not link the workspace package"
+fi
+pass "Android consumer installs packed tarball (FFI covered by release smoke job)"
+
+if [[ "$(uname -s)" == "Linux" && "$(uname -m)" == "x86_64" && -n "${ANDROID_NDK_HOME:-}" ]]; then
   if ! "$SCRIPT" \
     --platform android \
     --package-dir "$PACKAGE_DIR" \
-    --work-dir "$FIXTURE_ROOT/work-live-android"; then
-    fail "live Android packaged smoke test should pass on Linux"
+    --work-dir "$FIXTURE_ROOT/work-live-android-ffi"; then
+    fail "live Android packaged FFI smoke should pass when ANDROID_NDK_HOME is set"
   fi
-  consumer="$FIXTURE_ROOT/work-live-android/android-consumer"
-  installed="$consumer/node_modules/expo-easy-passkey"
-  for abi in arm64-v8a armeabi-v7a x86 x86_64; do
-    [[ -f "$installed/android/src/main/jniLibs/$abi/libexpo_easy_passkey_ffi.so" ]] \
-      || fail "Android consumer missing packed ABI $abi"
-  done
-  if [[ -L "$installed" ]]; then
-    target="$(readlink "$installed")"
-    [[ "$target" != *"/packages/module" ]] || fail "Android consumer must not link the workspace package"
-  fi
-  pass "Android consumer installs packed tarball and executes FFI"
-else
-  # Host cannot dlopen Android ELF; still prove inspect + packed consumer install.
-  if ! "$SCRIPT" \
-    --platform android \
-    --package-dir "$PACKAGE_DIR" \
-    --work-dir "$FIXTURE_ROOT/work-live-android" \
-    --skip-ffi; then
-    fail "live Android inspect/pack smoke test should pass"
-  fi
-  consumer="$FIXTURE_ROOT/work-live-android/android-consumer"
-  installed="$consumer/node_modules/expo-easy-passkey"
-  for abi in arm64-v8a armeabi-v7a x86 x86_64; do
-    [[ -f "$installed/android/src/main/jniLibs/$abi/libexpo_easy_passkey_ffi.so" ]] \
-      || fail "Android consumer missing packed ABI $abi"
-  done
-  pass "Android consumer installs packed tarball (FFI deferred to Linux CI)"
+  pass "Android consumer executes packaged FFI with NDK sysroot"
 fi
 
 if [[ "$(uname -s)" == "Darwin" ]]; then

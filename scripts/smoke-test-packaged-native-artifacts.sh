@@ -325,16 +325,20 @@ execute_android_ffi() {
     echo "Could not locate x86_64 Android sysroot libraries under $prebuilt" >&2
     exit 1
   }
+  [[ -f "$sysroot_lib/libdl.so" ]] || {
+    echo "Android sysroot is missing libdl.so under $sysroot_lib" >&2
+    exit 1
+  }
 
-  python3 - "$lib" "$sysroot_lib" <<'PY'
+  # LD_LIBRARY_PATH must be set in the process environment before Python starts;
+  # mutating os.environ after startup does not affect dlopen resolution.
+  LD_LIBRARY_PATH="${sysroot_lib}${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+    python3 - "$lib" <<'PY'
 import ctypes
-import os
 import sys
 from pathlib import Path
 
 lib_path = Path(sys.argv[1])
-sysroot_lib = Path(sys.argv[2])
-os.environ["LD_LIBRARY_PATH"] = f"{sysroot_lib}:{os.environ.get('LD_LIBRARY_PATH', '')}"
 
 try:
     lib = ctypes.CDLL(str(lib_path))
