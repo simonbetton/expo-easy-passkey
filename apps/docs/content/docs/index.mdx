@@ -37,23 +37,25 @@ export async function registerPasskey() {
     throw new Error(`Passkeys are not available on ${availability.platform}`);
   }
 
-  const options = await fetchJson("/passkeys/register/options");
+  const { ceremonyId, options } = await fetchJson("/passkeys/register/options");
   const credential = await createPasskey(options);
 
   await fetchJson("/passkeys/register/verify", {
     method: "POST",
-    body: JSON.stringify(credential),
+    body: JSON.stringify({ ceremonyId, response: credential }),
   });
 }
 
 export async function signInWithPasskey() {
   try {
-    const options = await fetchJson("/passkeys/authenticate/options");
+    const { ceremonyId, options } = await fetchJson(
+      "/passkeys/authenticate/options"
+    );
     const assertion = await authenticateWithPasskey(options);
 
     return await fetchJson("/passkeys/authenticate/verify", {
       method: "POST",
-      body: JSON.stringify(assertion),
+      body: JSON.stringify({ ceremonyId, response: assertion }),
     });
   } catch (error) {
     if (

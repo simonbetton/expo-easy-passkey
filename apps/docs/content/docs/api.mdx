@@ -86,10 +86,10 @@ Call this before showing passkey entry points. Still handle runtime errors becau
 `createPasskey` starts native passkey registration and returns a `RegistrationResponseJSON` to send to your server.
 
 ```ts
-const options = await fetchRegistrationOptions();
+const { ceremonyId, options } = await fetchRegistrationOptions();
 const credential = await createPasskey(options);
 
-await verifyRegistration(credential);
+await verifyRegistration(ceremonyId, credential);
 ```
 
 Options use WebAuthn JSON. Binary values must be base64url strings. Use your RP ID domain as `rp.id`; for most apps this is the production sign-in domain, such as `example.com`, without `https://`, a path, or a port.
@@ -149,10 +149,10 @@ The response already has the WebAuthn JSON shape:
 `authenticateWithPasskey` starts native passkey authentication and returns an `AuthenticationResponseJSON` to send to your server.
 
 ```ts
-const options = await fetchAuthenticationOptions();
+const { ceremonyId, options } = await fetchAuthenticationOptions();
 const assertion = await authenticateWithPasskey(options);
 
-await verifyAuthentication(assertion);
+await verifyAuthentication(ceremonyId, assertion);
 ```
 
 For a discoverable credential flow, omit `allowCredentials` and let the platform show matching passkeys. Use the same RP ID domain as `rpId` that you used as `rp.id` during registration.
@@ -220,7 +220,7 @@ Known passkey failures cross the public API as `PasskeyError`.
 ```ts
 try {
   const assertion = await authenticateWithPasskey(options);
-  await verifyAuthentication(assertion);
+  await verifyAuthentication(ceremonyId, assertion);
 } catch (error) {
   if (error instanceof PasskeyError) {
     switch (error.code) {
