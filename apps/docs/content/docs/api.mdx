@@ -73,11 +73,15 @@ if (availability.supported) {
 It returns:
 
 ```ts
+type PasskeyPlatform = "ios" | "android" | "web" | "unknown";
+
 type PasskeyAvailability = {
   supported: boolean;
-  platform: "ios" | "android" | "web" | "unknown";
+  platform: PasskeyPlatform;
 };
 ```
+
+`platform` is always one of those reachable values: `ios` and `android` on native builds, `web` for browser and SSR entry points, and `unknown` only when the runtime cannot be classified. On web, `supported` is always `false` until browser WebAuthn ceremonies are implemented.
 
 Call this before showing passkey entry points. Still handle runtime errors because platform state can change after the check.
 

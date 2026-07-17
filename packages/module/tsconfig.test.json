@@ -10,5 +10,10 @@
     "rootDir": ".",
     "types": ["jest", "node"]
   },
-  "include": ["src/**/*.test.ts", "app.plugin.js", "app.plugin.test.js"]
+  "include": [
+    "src/**/*.test.ts",
+    "src/**/*.ts",
+    "app.plugin.js",
+    "app.plugin.test.js"
+  ]
 }

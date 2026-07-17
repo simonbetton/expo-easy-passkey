@@ -34,6 +34,8 @@ The Jest tests mock the native bridge behind `expo-easy-passkey` and cover:
 - strict typing for TypeScript and JavaScript test files
 - validation, cancellation, malformed response, and invalid credential branches
 
+Packed-package runtime tests also install the built tarball and import it under browser, SSR, and missing-native-module conditions. Those checks assert the unsupported capability result and `ERR_PASSKEY_UNSUPPORTED` ceremony errors without loading a real native module.
+
 ## Native
 
 Native unit tests cover request parsing, response mapping, and error mapping without launching passkey UI.

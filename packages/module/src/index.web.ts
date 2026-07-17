@@ -1,4 +1,4 @@
-import ExpoEasyPasskeyModule from "./ExpoEasyPasskeyModule.js";
+import ExpoEasyPasskeyModule from "./ExpoEasyPasskeyModule.web.js";
 import { createPasskeyApi } from "./passkeyApi.js";
 
 export { PasskeyError, toPasskeyError } from "./errors.js";

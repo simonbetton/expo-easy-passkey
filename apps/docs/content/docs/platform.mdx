@@ -124,6 +124,14 @@ const authenticationOptions = {
 
 Use the domain only. `rp.id` and `rpId` must not include `https://`, a path, or a port.
 
+## Web and unsupported runtimes
+
+Web, server rendering, and other non-native runtimes can import the package safely. Capability detection returns `{ supported: false, platform: "web" }` on web. Registration and authentication reject with `ERR_PASSKEY_UNSUPPORTED`.
+
+Browser WebAuthn ceremonies are intentionally out of scope. Treat web support as a documented unsupported fallback until a future release adds browser ceremonies.
+
+Expo Go also cannot load this native module. Import and capability checks succeed; ceremony methods reject with `ERR_PASSKEY_UNSUPPORTED` and tell you to use a development build or production build.
+
 ## Device testing
 
 Final passkey testing needs real devices. Simulators and emulators may not match platform account, biometric, or credential provider behavior.
