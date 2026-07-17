@@ -15,8 +15,9 @@ public class ExpoEasyPasskeyModule: Module {
 
     AsyncFunction("create") { (_ options: [String: Any]) async throws -> [String: Any] in
       let request = try PasskeyCreateRequest(options)
+      let policy = try PasskeyRegistrationPolicy.resolve(request)
       let adapter = try await self.makeCeremonyAdapter()
-      return try await adapter.create(request)
+      return try await adapter.create(request, policy: policy)
     }
 
     AsyncFunction("get") { (_ options: [String: Any]) async throws -> [String: Any] in

@@ -64,13 +64,13 @@ export default function HomePage() {
 const availability = getPasskeyAvailability();
 
 if (availability.supported) {
-  const options = await fetchRegistrationOptions();
+  const { ceremonyId, options } = await fetchRegistrationOptions();
   const credential = await createPasskey(options);
-  await verifyRegistration(credential);
+  await verifyRegistration(ceremonyId, credential);
 
-  const request = await fetchAuthenticationOptions();
-  const assertion = await authenticateWithPasskey(request);
-  await verifyAuthentication(assertion);
+  const authentication = await fetchAuthenticationOptions();
+  const assertion = await authenticateWithPasskey(authentication.options);
+  await verifyAuthentication(authentication.ceremonyId, assertion);
 }`}</code>
           </pre>
         </div>

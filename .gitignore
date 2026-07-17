@@ -17,6 +17,7 @@ packages/module/android/build/
 !packages/module/ios
 !packages/module/ios/**
 packages/module/ios/build/
+packages/module/.rust-artifacts/
 node_modules
 target
 *.tsbuildinfo

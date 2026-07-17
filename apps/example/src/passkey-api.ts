@@ -20,6 +20,11 @@ export interface AuthenticationVerification {
   verified: true;
 }
 
+export interface CeremonyOptions<Options> {
+  ceremonyId: string;
+  options: Options;
+}
+
 export const apiBaseUrl =
   process.env.EXPO_PUBLIC_PASSKEY_API_BASE_URL ??
   "https://expo-easy-passkey-example-backend.vercel.app";
@@ -43,20 +48,29 @@ const postJson = async <ResponseBody>(
 };
 
 export const fetchRegistrationOptions = () =>
-  postJson<PublicKeyCredentialCreationOptionsJSON>(
+  postJson<CeremonyOptions<PublicKeyCredentialCreationOptionsJSON>>(
     "/passkeys/register/options"
   );
 
-export const verifyRegistration = (credential: RegistrationResponseJSON) =>
-  postJson<RegistrationVerification>("/passkeys/register/verify", credential);
+export const verifyRegistration = (
+  ceremonyId: string,
+  response: RegistrationResponseJSON
+) =>
+  postJson<RegistrationVerification>("/passkeys/register/verify", {
+    ceremonyId,
+    response,
+  });
 
 export const fetchAuthenticationOptions = () =>
-  postJson<PublicKeyCredentialRequestOptionsJSON>(
+  postJson<CeremonyOptions<PublicKeyCredentialRequestOptionsJSON>>(
     "/passkeys/authenticate/options"
   );
 
-export const verifyAuthentication = (assertion: AuthenticationResponseJSON) =>
-  postJson<AuthenticationVerification>(
-    "/passkeys/authenticate/verify",
-    assertion
-  );
+export const verifyAuthentication = (
+  ceremonyId: string,
+  response: AuthenticationResponseJSON
+) =>
+  postJson<AuthenticationVerification>("/passkeys/authenticate/verify", {
+    ceremonyId,
+    response,
+  });

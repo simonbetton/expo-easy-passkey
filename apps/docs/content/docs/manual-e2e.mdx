@@ -16,11 +16,12 @@ Maintainers should complete this checklist before merging a release PR. Then fol
 - iOS `apple-app-site-association` hosted at `/.well-known/apple-app-site-association`.
 - Android `assetlinks.json` hosted at `/.well-known/assetlinks.json`.
 - The app build signed with the certificate fingerprints listed in `assetlinks.json`.
+- The server expected-origin allowlist contains the HTTPS origin and each trusted certificate's `android:apk-key-hash:` origin.
 - A physical iOS or Android device with screen lock and passkeys enabled.
 
 ## Builds
 
-Run at least one iOS build and one Android build. If your Android debug and production builds use different signing certificates, test both or add both fingerprints to Digital Asset Links.
+Run at least one iOS build and one Android build. If your Android debug and production builds use different signing certificates, add both fingerprints to Digital Asset Links and the server configuration, then verify both end to end.
 
 ```txt
 iOS development build -> example.com AASA -> registration -> authentication
@@ -55,4 +56,11 @@ Android production build -> assetlinks.json production fingerprint -> registrati
 
 ## Release notes
 
-Record the device model, OS version, app build profile, relying-party domain, and server environment used for the final pass. Those details make regressions much easier to reproduce later.
+Before publication, record real-device evidence that automated fixtures cannot prove:
+
+- Association: AASA and Digital Asset Links paths exercised
+- Signing: certificate fingerprints trusted by `assetlinks.json` and the server origin allowlist
+- System UI: platform passkey presentation observed for registration and authentication
+- User verification: biometric or device credential completion succeeded
+
+Also record the device model, OS version, app build profile, relying-party domain, and server environment used for the final pass. Attach those notes when reviewing the release PR so publication evidence stays complete.

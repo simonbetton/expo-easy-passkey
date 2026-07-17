@@ -32,7 +32,12 @@ export interface NativeCreateRequest {
     /** Human-readable account name shown in platform passkey UI. */
     displayName: string;
   };
-  /** Expected origin used when constructing or validating client data. */
+  /**
+   * Expected HTTPS origin for client-data construction where the platform uses
+   * it. On Android, Credential Manager derives the WebAuthn origin from the
+   * installed APK signing certificate; this option does not override that native app origin.
+   * Origin validation is separate from RP ID validation.
+   */
   origin?: string;
   /** Optional ceremony timeout in milliseconds. */
   timeout?: number;
@@ -69,7 +74,12 @@ export interface NativeGetRequest {
   challenge: string;
   /** Relying party ID whose credential should be used for authentication. */
   rpId: string;
-  /** Expected origin used when constructing or validating client data. */
+  /**
+   * Expected HTTPS origin for client-data construction where the platform uses
+   * it. On Android, Credential Manager derives the WebAuthn origin from the
+   * installed APK signing certificate; this option does not override that native app origin.
+   * Origin validation is separate from RP ID validation.
+   */
   origin?: string;
   /** Optional ceremony timeout in milliseconds. */
   timeout?: number;
@@ -135,11 +145,14 @@ export interface CeremonySummary {
   origin: string;
 }
 
+/** Reachable platform values returned by capability detection. */
+export type PasskeyPlatform = "ios" | "android" | "web" | "unknown";
+
 export interface ExpoEasyPasskeyNativeModule {
   /** Reports whether the current native runtime can perform passkey ceremonies. */
   isSupported: () => boolean;
   /** Reports the native platform family. */
-  getPlatform: () => "ios" | "android" | "web" | "unknown";
+  getPlatform: () => PasskeyPlatform;
   /** Starts native passkey registration and returns a WebAuthn-shaped credential response. */
   create: (options: NativeCreateRequest) => Promise<NativeRegistrationResponse>;
   /** Starts native passkey authentication and returns a WebAuthn-shaped assertion response. */
@@ -221,7 +234,12 @@ export interface PublicKeyCredentialCreationOptionsJSON {
   };
   /** Attestation conveyance preference requested from the authenticator. */
   attestation?: AttestationConveyancePreference;
-  /** Expected origin used when constructing or validating client data. */
+  /**
+   * Expected HTTPS origin for client-data construction where the platform uses
+   * it. On Android, Credential Manager derives the WebAuthn origin from the
+   * installed APK signing certificate; this option does not override that native app origin.
+   * Origin validation is separate from RP ID validation.
+   */
   origin?: string;
 }
 
@@ -236,7 +254,12 @@ export interface PublicKeyCredentialRequestOptionsJSON {
   timeout?: number;
   /** Requirement for local user verification during authentication. */
   userVerification?: UserVerificationRequirement;
-  /** Expected origin used when constructing or validating client data. */
+  /**
+   * Expected HTTPS origin for client-data construction where the platform uses
+   * it. On Android, Credential Manager derives the WebAuthn origin from the
+   * installed APK signing certificate; this option does not override that native app origin.
+   * Origin validation is separate from RP ID validation.
+   */
   origin?: string;
 }
 
@@ -290,7 +313,7 @@ export interface PasskeyAvailability {
   /** Whether passkey ceremonies are supported in the current runtime. */
   supported: boolean;
   /** Platform family detected for the current runtime. */
-  platform: "ios" | "android" | "web" | "unknown";
+  platform: PasskeyPlatform;
 }
 
 export type PasskeyCapability = PasskeyAvailability;

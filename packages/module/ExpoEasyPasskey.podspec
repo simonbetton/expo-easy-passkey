@@ -34,4 +34,10 @@ Pod::Spec.new do |s|
   s.pod_target_xcconfig = {
     "DEFINES_MODULE" => "YES"
   }
+
+  s.test_spec "Tests" do |test_spec|
+    test_spec.ios.deployment_target = "16.4"
+    test_spec.libraries = "c++"
+    test_spec.source_files = "ios/Tests/**/*.swift"
+  end
 end
