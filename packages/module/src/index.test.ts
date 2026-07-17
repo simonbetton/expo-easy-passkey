@@ -21,7 +21,9 @@ const nativeModule: jest.Mocked<ExpoEasyPasskeyNativeModule> = {
 };
 
 jest.unstable_mockModule("expo-modules-core", () => ({
+  Platform: { OS: "ios" },
   requireNativeModule: jest.fn(() => nativeModule),
+  requireOptionalNativeModule: jest.fn(() => nativeModule),
 }));
 
 const moduleExports = await import("./index.js");

@@ -7,7 +7,7 @@ Start with the step that failed. If the system passkey sheet never appears, chec
 
 ## Expo Go
 
-Expo Go cannot load this native module. Use a development build or production build.
+Expo Go cannot load this native module. Importing the package and calling `getPasskeyAvailability` still work; ceremony methods reject with `ERR_PASSKEY_UNSUPPORTED` and point you to a development build or production build.
 
 ```sh
 npx expo run:ios
@@ -21,12 +21,17 @@ eas build --profile development --platform ios
 eas build --profile development --platform android
 ```
 
+## Web
+
+Web and SSR imports are supported for capability detection only. `getPasskeyAvailability()` returns `{ supported: false, platform: "web" }`, and ceremony methods reject with `ERR_PASSKEY_UNSUPPORTED`. Browser WebAuthn ceremonies are a future feature, not part of the current package contract.
+
 ## `ERR_PASSKEY_UNSUPPORTED`
 
 The platform cannot run passkey ceremonies.
 
 Check:
 
+- The app is not running on web (browser WebAuthn is not implemented yet).
 - The app is not running in Expo Go.
 - The device has a supported OS version.
 - The device has screen lock, biometrics, or another user verification method enabled.

@@ -145,6 +145,14 @@ Reachable behavior:
 - `authenticatorSelection.authenticatorAttachment` may be omitted or set to `platform`. `cross-platform` is rejected until security-key registration is implemented.
 - Platform passkeys are always discoverable. `residentKey` values `preferred` and `required`, and legacy `requireResidentKey` true or false, are accepted as that fixed semantics. `residentKey: "discouraged"` is rejected as incompatible.
 
+## Web and unsupported runtimes
+
+Web, server rendering, and other non-native runtimes can import the package safely. Capability detection returns `{ supported: false, platform: "web" }` on web. Registration and authentication reject with `ERR_PASSKEY_UNSUPPORTED`.
+
+Browser WebAuthn ceremonies are intentionally out of scope. Treat web support as a documented unsupported fallback until a future release adds browser ceremonies.
+
+Expo Go also cannot load this native module. Import and capability checks succeed; ceremony methods reject with `ERR_PASSKEY_UNSUPPORTED` and tell you to use a development build or production build.
+
 ## Device testing
 
 Final passkey testing needs real devices. Simulators and emulators may not match platform account, biometric, or credential provider behavior.

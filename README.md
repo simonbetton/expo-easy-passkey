@@ -39,7 +39,7 @@ You must also host platform association files:
 - iOS: `/.well-known/apple-app-site-association`
 - Android: `/.well-known/assetlinks.json`
 
-Expo Go is not supported because passkeys require custom native modules. Use a development build or production build.
+Expo Go is not supported because passkeys require custom native modules. Use a development build or production build. Web and SSR imports are safe for capability detection; ceremonies reject with `ERR_PASSKEY_UNSUPPORTED` until browser WebAuthn support is added.
 
 ## Run the Example App
 

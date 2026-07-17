@@ -33,7 +33,7 @@ Configure the same package as an Expo config plugin:
 }
 ```
 
-Expo Go cannot load custom native modules, so use a development build or production build.
+Expo Go cannot load custom native modules, so use a development build or production build. Web and SSR imports are safe for capability detection; ceremonies reject with `ERR_PASSKEY_UNSUPPORTED` until browser WebAuthn support is added.
 
 ## What the package includes
 

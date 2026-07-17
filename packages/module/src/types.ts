@@ -135,11 +135,14 @@ export interface CeremonySummary {
   origin: string;
 }
 
+/** Reachable platform values returned by capability detection. */
+export type PasskeyPlatform = "ios" | "android" | "web" | "unknown";
+
 export interface ExpoEasyPasskeyNativeModule {
   /** Reports whether the current native runtime can perform passkey ceremonies. */
   isSupported: () => boolean;
   /** Reports the native platform family. */
-  getPlatform: () => "ios" | "android" | "web" | "unknown";
+  getPlatform: () => PasskeyPlatform;
   /** Starts native passkey registration and returns a WebAuthn-shaped credential response. */
   create: (options: NativeCreateRequest) => Promise<NativeRegistrationResponse>;
   /** Starts native passkey authentication and returns a WebAuthn-shaped assertion response. */
@@ -290,7 +293,7 @@ export interface PasskeyAvailability {
   /** Whether passkey ceremonies are supported in the current runtime. */
   supported: boolean;
   /** Platform family detected for the current runtime. */
-  platform: "ios" | "android" | "web" | "unknown";
+  platform: PasskeyPlatform;
 }
 
 export type PasskeyCapability = PasskeyAvailability;
