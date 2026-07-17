@@ -16,11 +16,12 @@ Maintainers should complete this checklist before merging a release PR. Then fol
 - iOS `apple-app-site-association` hosted at `/.well-known/apple-app-site-association`.
 - Android `assetlinks.json` hosted at `/.well-known/assetlinks.json`.
 - The app build signed with the certificate fingerprints listed in `assetlinks.json`.
+- The server expected-origin allowlist contains the HTTPS origin and each trusted certificate's `android:apk-key-hash:` origin.
 - A physical iOS or Android device with screen lock and passkeys enabled.
 
 ## Builds
 
-Run at least one iOS build and one Android build. If your Android debug and production builds use different signing certificates, test both or add both fingerprints to Digital Asset Links.
+Run at least one iOS build and one Android build. If your Android debug and production builds use different signing certificates, add both fingerprints to Digital Asset Links and the server configuration, then verify both end to end.
 
 ```txt
 iOS development build -> example.com AASA -> registration -> authentication

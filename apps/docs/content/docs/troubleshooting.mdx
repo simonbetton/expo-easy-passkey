@@ -115,13 +115,13 @@ If native registration or authentication succeeds but the server rejects the res
 
 - The challenge sent to the app matches the challenge stored on the server.
 - The challenge was not reused.
-- `expectedOrigin` matches the origin in `clientDataJSON`.
+- `expectedOrigin` contains the exact origin in `clientDataJSON`.
 - `expectedRPID` matches the same RP ID domain as `rp.id` and `rpId`.
 - Credential IDs are encoded consistently, usually base64url.
 - The server stores the credential public key after registration.
 - The server updates the sign counter after authentication if your verifier returns one.
 
-For native apps, `origin` should be the web origin for your relying party, such as `https://example.com`.
+For iOS and web ceremonies, the expected origin is normally the HTTPS relying-party origin, such as `https://example.com`. Android Credential Manager derives an `android:apk-key-hash:` origin from the installed app's signing certificate. Add only explicitly trusted certificate-derived Android origins to the server allowlist; keep `expectedRPID` as the associated domain.
 
 ## Invalid response
 

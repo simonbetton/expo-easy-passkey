@@ -10,6 +10,7 @@ import {
 } from "@simplewebauthn/server";
 import { isoCBOR } from "@simplewebauthn/server/helpers";
 
+import { createServerConfig } from "../../../apps/example-backend/src/server/config.js";
 import type {
   ExpoEasyPasskeyNativeModule,
   NativeAuthenticationResponse,
@@ -45,6 +46,27 @@ const { authenticateWithPasskey, createPasskey } =
 
 const rpId = "example.com";
 const userId = new TextEncoder().encode("contract-test-user");
+
+const fingerprint = (start: number): string =>
+  Array.from({ length: 32 }, (_, index) =>
+    (start + index).toString(16).padStart(2, "0")
+  ).join(":");
+
+const trustedOrigins = createServerConfig({
+  ANDROID_SHA256_CERT_FINGERPRINTS: `${fingerprint(0)},${fingerprint(32)}`,
+  PASSKEY_ORIGIN: "https://example.com",
+  PASSKEY_RP_ID: rpId,
+}).relyingParty.expectedOrigins;
+const unknownOrigins = createServerConfig({
+  ANDROID_SHA256_CERT_FINGERPRINTS: fingerprint(64),
+  PASSKEY_ORIGIN: "https://example.com",
+  PASSKEY_RP_ID: rpId,
+}).relyingParty.expectedOrigins;
+const [, unknownAndroidOrigin] = unknownOrigins;
+
+if (!unknownAndroidOrigin) {
+  throw new Error("Unknown Android origin fixture was not configured.");
+}
 
 const encodeBase64Url = (value: Uint8Array): string =>
   Buffer.from(value).toString("base64url");
@@ -207,7 +229,10 @@ class VirtualPlatformAuthenticator {
   }
 }
 
-const runCeremonyContract = async (origin: string): Promise<void> => {
+const runCeremonyContract = async (
+  registrationOrigin: string,
+  authenticationOrigin = registrationOrigin
+): Promise<void> => {
   const authenticator = new VirtualPlatformAuthenticator();
   nativeModule.create.mockImplementation((request) =>
     atBoundary("native registration mapping", () =>
@@ -239,7 +264,7 @@ const runCeremonyContract = async (origin: string): Promise<void> => {
     () =>
       createPasskey({
         ...registrationOptions,
-        origin,
+        origin: registrationOrigin,
       } as PublicKeyCredentialCreationOptionsJSON)
   );
   const credential = await atBoundary(
@@ -247,7 +272,7 @@ const runCeremonyContract = async (origin: string): Promise<void> => {
     async () => {
       const registration = await verifyRegistrationResponse({
         expectedChallenge: registrationOptions.challenge,
-        expectedOrigin: origin,
+        expectedOrigin: [...trustedOrigins],
         expectedRPID: rpId,
         requireUserVerification: true,
         response: registrationResponse,
@@ -255,7 +280,7 @@ const runCeremonyContract = async (origin: string): Promise<void> => {
       });
 
       expect(registration.verified).toBe(true);
-      expect(registration.registrationInfo?.origin).toBe(origin);
+      expect(registration.registrationInfo?.origin).toBe(registrationOrigin);
 
       if (!registration.registrationInfo) {
         throw new Error("registration did not return credential information");
@@ -280,35 +305,41 @@ const runCeremonyContract = async (origin: string): Promise<void> => {
     () =>
       authenticateWithPasskey({
         ...authenticationOptions,
-        origin,
+        origin: authenticationOrigin,
       } as PublicKeyCredentialRequestOptionsJSON)
   );
   await atBoundary("relying-party authentication verification", async () => {
     const authentication = await verifyAuthenticationResponse({
       credential,
       expectedChallenge: authenticationOptions.challenge,
-      expectedOrigin: origin,
+      expectedOrigin: [...trustedOrigins],
       expectedRPID: rpId,
       requireUserVerification: true,
       response: authenticationResponse,
     });
 
     expect(authentication.verified).toBe(true);
-    expect(authentication.authenticationInfo.origin).toBe(origin);
+    expect(authentication.authenticationInfo.origin).toBe(authenticationOrigin);
   });
 };
 
 describe("public package-to-relying-party contract", () => {
-  it.each([
-    ["HTTPS", "https://example.com"],
-    [
-      "Android native",
-      "android:apk-key-hash:ATzQY0Ta_4vFzYmCG9wzK2PqYRbBrAqfTVqLwYui4Bk",
-    ],
-  ])(
-    "verifies registration and authentication with an %s origin",
-    async (_fixture, origin) => {
+  it.each(trustedOrigins)(
+    "verifies registration and authentication with configured origin %s",
+    async (origin) => {
       await runCeremonyContract(origin);
     }
   );
+
+  it("rejects registration from an unknown Android origin", async () => {
+    await expect(runCeremonyContract(unknownAndroidOrigin)).rejects.toThrow(
+      "relying-party registration verification failed"
+    );
+  });
+
+  it("rejects authentication from an unknown Android origin", async () => {
+    await expect(
+      runCeremonyContract("https://example.com", unknownAndroidOrigin)
+    ).rejects.toThrow("relying-party authentication verification failed");
+  });
 });

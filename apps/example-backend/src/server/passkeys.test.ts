@@ -4,6 +4,7 @@ import type {
   RegistrationResponseJSON,
 } from "@simplewebauthn/server";
 
+import { relyingParty } from "./config.js";
 import { createPasskeyService } from "./passkeys.js";
 import type { PasskeyDependencies } from "./passkeys.js";
 import { createDemoStore } from "./store.js";
@@ -120,6 +121,7 @@ describe("passkey ceremony service", () => {
       ).toEqual(
         expect.objectContaining({
           expectedChallenge: "registration-challenge",
+          expectedOrigin: relyingParty.expectedOrigins,
         })
       );
       expect(
@@ -127,6 +129,7 @@ describe("passkey ceremony service", () => {
       ).toEqual(
         expect.objectContaining({
           expectedChallenge: "authentication-challenge",
+          expectedOrigin: relyingParty.expectedOrigins,
         })
       );
     }

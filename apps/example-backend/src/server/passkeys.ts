@@ -96,7 +96,7 @@ export const createPasskeyService = (
     const expectedChallenge = store.getCeremonyChallenge(ceremony);
     const verification = await dependencies.verifyRegistrationResponse({
       expectedChallenge,
-      expectedOrigin: relyingParty.origin,
+      expectedOrigin: [...relyingParty.expectedOrigins],
       expectedRPID: relyingParty.rpId,
       response,
     });
@@ -177,7 +177,7 @@ export const createPasskeyService = (
         transports: passkey.transports,
       },
       expectedChallenge,
-      expectedOrigin: relyingParty.origin,
+      expectedOrigin: [...relyingParty.expectedOrigins],
       expectedRPID: relyingParty.rpId,
       response,
     });
