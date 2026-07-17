@@ -44,8 +44,9 @@ Review the release PR before merging it:
 - Confirm only `expo-easy-passkey` is versioned.
 - Confirm `packages/module/CHANGELOG.md` describes the release clearly.
 - Confirm package metadata still points to the single installable package.
-- Confirm CI is green.
-- Confirm any required manual device E2E notes are recorded.
+- Confirm CI is green, including `pnpm test:acceptance` and `pnpm verify:release-acceptance`.
+- Confirm required manual device E2E notes are recorded under Release evidence below.
+- Confirm response shapes and public error codes are unchanged, or that the changelog includes an explicit compatibility note.
 
 Merging the release PR runs the release workflow again. This time Changesets publishes `expo-easy-passkey` to npm, creates tags, and updates GitHub release metadata.
 
@@ -81,11 +82,13 @@ pnpm rust:fmt
 pnpm rust:clippy
 pnpm bindgen:check
 pnpm check
+pnpm test:acceptance
+pnpm verify:release-acceptance
 pnpm build
 pnpm pack:check
 ```
 
-Publication cannot fall back to checkout binaries: prepare replaces them before `pack:check` and `changeset publish`. npm provenance remains enabled via `publishConfig.provenance` and the workflow `id-token: write` permission, so the published package is attested to this workflow run and commit.
+Any contract, native artifact, packed-consumer, web import, or acceptance-plan wiring failure blocks publication. Publication cannot fall back to checkout binaries: prepare replaces them before `pack:check` and `changeset publish`. npm provenance remains enabled via `publishConfig.provenance` and the workflow `id-token: write` permission, so the published package is attested to this workflow run and commit.
 
 Then `changesets/action` either opens the release PR or publishes with:
 
@@ -108,18 +111,44 @@ Configure these settings before the first release:
 - Ensure the npm package name is available and the token has permission to publish it.
 - Ensure GitHub Actions can create pull requests and tags with `GITHUB_TOKEN`.
 
+## Release evidence
+
+Before merging a release PR, review and record the evidence that proves the cross-platform contract:
+
+Automated evidence (must be green in CI / release):
+
+- Package-to-relying-party registration and authentication for the HTTPS iOS origin and configured Android APK-key-hash origins
+- Exact origin trust, concurrent and replayed ceremony isolation, iOS pre-presentation policy validation, and web/SSR unsupported behavior
+- Trusted native artifact build, packaged-target inspection, FFI smoke tests, drift detection, and exact-artifact publication checks
+- `release-evidence.json` source commit, lockfile digest, toolchain, target inventory, and checksums
+
+Required real-device evidence from `Device E2E` (fixtures cannot prove these):
+
+- Association: hosted `apple-app-site-association` and `assetlinks.json`
+- Signing: app build certificates match Digital Asset Links and the server Android origin allowlist
+- System UI: platform passkey sheets appear for registration and authentication
+- User verification: biometric or device credential completion succeeds end to end
+
+Compatibility evidence:
+
+- Existing WebAuthn response shapes and public error codes remain unchanged unless the changelog includes an explicit compatibility note
+
+Record the device model, OS version, app build profile, relying-party domain, server environment, and which association / signing paths were exercised. Keep those notes with the release PR review.
+
 ## Validation
 
 Run the full local verification suite before merging a release PR when native, Rust, generated binding, or public API changes are involved:
 
 ```sh
 pnpm verify
+pnpm test:acceptance
+pnpm verify:release-acceptance
 pnpm bindgen:check
 pnpm --filter expo-easy-passkey prepublishOnly
 pnpm --filter expo-easy-passkey pack --dry-run
 ```
 
-Before release, run device E2E too. Passkey ceremonies depend on platform accounts, signing certificates, associated domains, Digital Asset Links, credential providers, and user verification UI. Follow `Device E2E` and record the device model, OS version, app build profile, relying-party domain, and server environment used for the final pass.
+Before release, run device E2E too. Passkey ceremonies depend on platform accounts, signing certificates, associated domains, Digital Asset Links, credential providers, and user verification UI. Follow `Device E2E` and complete the Release evidence checklist above.
 
 When Rust, UniFFI, or native helper code changes, regenerate packageable native Rust artifacts locally for development and review. Trusted release jobs rebuild and upload immutable artifacts with metadata, then smoke-test the packed package against those outputs before publication:
 

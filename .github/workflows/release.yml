@@ -225,6 +225,8 @@ jobs:
       - run: pnpm rust:clippy
       - run: pnpm bindgen:check
       - run: pnpm check
+      - run: pnpm test:acceptance
+      - run: pnpm verify:release-acceptance
       - run: pnpm build
       - run: pnpm pack:check
 

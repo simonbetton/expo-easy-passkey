@@ -99,4 +99,4 @@ The test suite covers:
 - Expo module bridge wiring.
 - Native request and response mapping.
 
-Manual real-device E2E is still required before release because platform passkey UI depends on OS accounts, app signing, associated domains, Digital Asset Links, and user verification.
+Manual real-device E2E is still required before release because platform passkey UI depends on OS accounts, app signing, associated domains, Digital Asset Links, and user verification. Maintainers should follow the acceptance plan in `Testing` and the Release evidence checklist in `Releasing` so contract, native artifact, web import, and device checks all block publication together.

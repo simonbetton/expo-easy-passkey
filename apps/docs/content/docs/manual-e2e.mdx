@@ -56,4 +56,11 @@ Android production build -> assetlinks.json production fingerprint -> registrati
 
 ## Release notes
 
-Record the device model, OS version, app build profile, relying-party domain, and server environment used for the final pass. Those details make regressions much easier to reproduce later.
+Before publication, record real-device evidence that automated fixtures cannot prove:
+
+- Association: AASA and Digital Asset Links paths exercised
+- Signing: certificate fingerprints trusted by `assetlinks.json` and the server origin allowlist
+- System UI: platform passkey presentation observed for registration and authentication
+- User verification: biometric or device credential completion succeeded
+
+Also record the device model, OS version, app build profile, relying-party domain, and server environment used for the final pass. Attach those notes when reviewing the release PR so publication evidence stays complete.

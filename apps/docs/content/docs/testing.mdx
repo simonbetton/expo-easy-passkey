@@ -10,12 +10,29 @@ cargo fmt --check
 cargo clippy --workspace --all-targets -- -D warnings
 pnpm bindgen:check
 pnpm check
+pnpm test:acceptance
+pnpm verify:release-acceptance
 pnpm build
 ```
 
 For npm publishing, use this page with `Device E2E` and `Releasing`. `Testing` covers automated checks. `Releasing` covers versioning, changelogs, npm provenance, and failure recovery.
 
 App teams using the package should focus on the manual device checks. Maintainers should run the full suite after touching native code, Rust helpers, generated bindings, or public TypeScript types.
+
+## Acceptance plan
+
+CI and release automation treat the following as one release-blocking acceptance plan. Any failure blocks publication.
+
+| Gate | What it proves |
+| --- | --- |
+| `packages/module/src/contract.acceptance.test.ts` | Registration and authentication through the public package-to-relying-party seam for the HTTPS iOS origin and every configured Android APK-key-hash origin, plus exact origin trust and iOS pre-presentation policy validation |
+| `apps/example-backend/src/server/{config,store,passkeys}.test.ts` | Trusted fingerprint conversion, concurrent and replayed ceremony isolation, and ceremony ID carry-through |
+| `packages/module/src/unsupported.runtime.test.ts` | Packed-package web/SSR import safety and `ERR_PASSKEY_UNSUPPORTED` ceremony errors |
+| `pnpm test:native:android` / `pnpm test:native:ios` | Native request mapping and iOS policy validation without launching system UI |
+| Release native jobs | Trusted artifact build, packaged-target inspection, FFI smoke tests, drift detection, and exact-artifact publication |
+| `Device E2E` | Association, signing, system UI, and user verification behavior that fixtures cannot prove |
+
+Run the named acceptance suite locally with `pnpm test:acceptance`. Confirm the plan is still wired into CI and release with `pnpm verify:release-acceptance` (or `pnpm verify:release-acceptance -- --list` to print the inventory).
 
 ## Rust and FFI
 
