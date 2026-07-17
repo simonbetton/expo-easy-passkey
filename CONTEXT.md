@@ -24,4 +24,4 @@ The placeholder session response returned by `apps/example-backend` after authen
 
 ### Demo Store
 
-The in-memory storage used by `apps/example-backend` for challenges and passkey credentials. It is useful for local examples, but it is not durable across Vercel cold starts, multi-instance routing, or redeploys.
+The concurrency-safe in-memory storage used by `apps/example-backend` for expiring ceremony records and passkey credentials. It safely isolates overlapping ceremonies within one process, but it is not production persistence and is not durable or coordinated across Vercel cold starts, multi-instance routing, or redeploys.

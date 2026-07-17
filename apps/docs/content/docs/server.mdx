@@ -25,7 +25,7 @@ POST /passkeys/authenticate/options
 POST /passkeys/authenticate/verify
 ```
 
-Options endpoints return WebAuthn JSON. Verify endpoints receive the JSON returned by `createPasskey` or `authenticateWithPasskey`.
+Options endpoints return an opaque ceremony identifier alongside WebAuthn JSON. Verify endpoints receive that identifier with the JSON returned by `createPasskey` or `authenticateWithPasskey`. The identifier lets the server select one pending ceremony without replacing or consuming another client's challenge.
 
 The app snippets use `fetch` to show the boundary. The app asks for options, runs the native ceremony, and posts the result back. Your verifier still handles passkey security. These demos import `fetch` from [`expo/fetch`](https://docs.expo.dev/versions/latest/sdk/expo/#expofetch-api), Expo's WinterCG-compliant Fetch API.
 
@@ -59,7 +59,7 @@ ANDROID_PACKAGE_NAME=com.example.app
 ANDROID_SHA256_CERT_FINGERPRINTS=12:34:56:78:90:AB:CD:EF:12:34:56:78:90:AB:CD:EF:12:34:56:78:90:AB:CD:EF:12:34:56:78:90:AB:CD:EF
 ```
 
-The backend uses an in-memory demo store for challenges and credentials. It is Vercel-compatible as an API, but the stored state is not durable across cold starts, multiple function instances, or redeploys. Treat the store as an implementation example and replace it with durable storage for production.
+The backend uses a concurrency-safe in-memory demo store for pending ceremonies and credentials. Distinct, expiring ceremony records make overlapping requests and single-use verification safe within one server process. The state is not durable or coordinated across cold starts, multiple function instances, or redeploys. Treat it as a local demonstration, not production persistence; production deployments need a shared durable store with atomic conditional consumption.
 
 ## Registration
 
@@ -72,7 +72,7 @@ export async function addPasskey() {
     "https://example.com/passkeys/register/options",
     { method: "POST" }
   );
-  const options = await optionsResponse.json();
+  const { ceremonyId, options } = await optionsResponse.json();
 
   const credential = await createPasskey(options);
 
@@ -81,7 +81,7 @@ export async function addPasskey() {
     {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(credential),
+      body: JSON.stringify({ ceremonyId, response: credential }),
     }
   );
 
@@ -127,7 +127,7 @@ export async function signInWithPasskey() {
     "https://example.com/passkeys/authenticate/options",
     { method: "POST" }
   );
-  const options = await optionsResponse.json();
+  const { ceremonyId, options } = await optionsResponse.json();
 
   const assertion = await authenticateWithPasskey(options);
 
@@ -136,7 +136,7 @@ export async function signInWithPasskey() {
     {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(assertion),
+      body: JSON.stringify({ ceremonyId, response: assertion }),
     }
   );
 
@@ -210,9 +210,14 @@ export async function registrationOptions(user: User) {
     })),
   });
 
-  await saveChallenge(user.id, options.challenge);
+  const ceremonyId = await createCeremony({
+    kind: "registration",
+    userId: user.id,
+    challenge: options.challenge,
+    expiresAt: Date.now() + 300_000,
+  });
 
-  return options;
+  return { ceremonyId, options };
 }
 ```
 
@@ -221,12 +226,20 @@ Registration verification:
 ```ts
 import { verifyRegistrationResponse } from "@simplewebauthn/server";
 
-export async function verifyRegistration(user: User, credential: unknown) {
-  const expectedChallenge = await loadChallenge(user.id);
+export async function verifyRegistration(
+  user: User,
+  ceremonyId: string,
+  credential: unknown
+) {
+  const ceremony = await loadCeremony({
+    ceremonyId,
+    kind: "registration",
+    userId: user.id,
+  });
 
   const verification = await verifyRegistrationResponse({
     response: credential,
-    expectedChallenge,
+    expectedChallenge: ceremony.challenge,
     expectedOrigin: "https://example.com",
     expectedRPID: "example.com",
   });
@@ -235,6 +248,7 @@ export async function verifyRegistration(user: User, credential: unknown) {
     throw new Error("Passkey registration failed");
   }
 
+  await consumeCeremonyIfUnchanged(ceremony);
   await savePasskey(user.id, verification.registrationInfo);
 }
 ```
@@ -245,6 +259,8 @@ Authentication verification follows the same pattern: load the saved credential,
 
 - Challenge values are single use.
 - Challenge values expire quickly.
+- Each options response has an opaque ceremony identifier bound to its kind, user, challenge, and expiry.
+- Verification consumes the matching ceremony only after the response succeeds.
 - `rp.id`, `rpId`, `expectedRPID`, the iOS AASA file, and Android Digital Asset Links all use the same RP ID domain.
 - `expectedOrigin` matches the origin encoded into `clientDataJSON`.
 - Credential IDs are stored as base64url strings or converted consistently at the server boundary.
