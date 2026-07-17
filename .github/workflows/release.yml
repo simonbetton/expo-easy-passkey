@@ -75,11 +75,71 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+  smoke-android-native-artifacts:
+    name: Smoke-test Android packaged natives
+    needs:
+      - build-android-native-artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: r27c
+          link-to-sdk: false
+
+      - name: Download immutable Android native artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: android-native-artifacts
+          path: .
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter expo-easy-passkey build
+
+      - name: Smoke-test packed Android native artifacts
+        env:
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+        run: bash scripts/smoke-test-packaged-native-artifacts.sh --platform android
+
+  smoke-apple-native-artifacts:
+    name: Smoke-test Apple packaged natives
+    needs:
+      - build-apple-native-artifacts
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Download immutable Apple native artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: apple-native-artifacts
+          path: .
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter expo-easy-passkey build
+
+      - name: Smoke-test packed Apple native artifacts
+        run: bash scripts/smoke-test-packaged-native-artifacts.sh --platform apple
+
   release:
     name: Release
     needs:
-      - build-android-native-artifacts
-      - build-apple-native-artifacts
+      - smoke-android-native-artifacts
+      - smoke-apple-native-artifacts
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

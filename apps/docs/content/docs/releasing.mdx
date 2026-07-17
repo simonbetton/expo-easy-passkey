@@ -69,6 +69,8 @@ Before publication work starts, trusted jobs rebuild native Rust artifacts from 
 
 Those jobs upload immutable workflow artifacts plus metadata that records the source commit, lockfile digest, toolchain identity, target inventory, and output checksums. A missing supported target or build failure blocks the downstream release job.
 
+Separate smoke jobs then download those exact artifacts (they do not rebuild natives), pack `expo-easy-passkey`, install the tarball into disposable Android and Apple consumers, inspect every required ABI and Apple device/simulator slice, and execute one exported UniFFI helper from the packaged runtime for each platform family. Missing, stale, mismatched, or unloadable binaries fail before publication.
+
 The release job then performs:
 
 ```sh
@@ -115,7 +117,7 @@ pnpm --filter expo-easy-passkey pack --dry-run
 
 Before release, run device E2E too. Passkey ceremonies depend on platform accounts, signing certificates, associated domains, Digital Asset Links, credential providers, and user verification UI. Follow `Device E2E` and record the device model, OS version, app build profile, relying-party domain, and server environment used for the final pass.
 
-When Rust, UniFFI, or native helper code changes, regenerate packageable native Rust artifacts locally for development and review. Trusted release jobs rebuild and upload immutable artifacts with metadata for downstream validation and publication:
+When Rust, UniFFI, or native helper code changes, regenerate packageable native Rust artifacts locally for development and review. Trusted release jobs rebuild and upload immutable artifacts with metadata, then smoke-test the packed package against those outputs before publication:
 
 ```sh
 pnpm build:rust-artifacts
@@ -123,6 +125,10 @@ pnpm build:rust-artifacts
 # pnpm build:rust-artifacts -- android
 # pnpm build:rust-artifacts -- apple
 pnpm bindgen:check
+pnpm --filter expo-easy-passkey build
+# After metadata exists under packages/module/.rust-artifacts/:
+# pnpm smoke:native-artifacts -- --platform apple
+# pnpm smoke:native-artifacts -- --platform android
 pnpm pack:check
 ```
 
