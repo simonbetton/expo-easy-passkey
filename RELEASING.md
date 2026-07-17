@@ -13,7 +13,7 @@ pnpm --filter expo-easy-passkey prepublishOnly
 pnpm --filter expo-easy-passkey pack --dry-run
 ```
 
-Release automation runs from GitHub Actions on `main`. It opens a Changesets release PR while changesets are pending, then publishes `expo-easy-passkey` to npm after the release PR is merged.
+Release automation runs from GitHub Actions on `main`. Trusted jobs rebuild every supported Android ABI and Apple device/simulator slice from the release commit and locked Cargo graph, upload those outputs as immutable workflow artifacts with toolchain/lockfile/checksum metadata, and block the release job when a build or required target fails. Downstream publication should consume those uploaded artifacts rather than previously committed binaries.
 
 Required repository setup:
 

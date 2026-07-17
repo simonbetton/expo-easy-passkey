@@ -87,7 +87,7 @@ cargo test --workspace
 
 `pnpm install` installs lefthook. The pre-push hook runs `pnpm verify`, which mirrors the CI verify gate.
 
-Run `pnpm bindgen:check` after changing `crates/passkey-ffi` to regenerate Swift/Kotlin UniFFI bindings and fail if committed bindings drift. Run `pnpm build:rust-artifacts` from macOS before packaging a release so the npm package includes the iOS xcframework and Android shared libraries used by the UniFFI runtime.
+Run `pnpm bindgen:check` after changing `crates/passkey-ffi` to regenerate Swift/Kotlin UniFFI bindings and fail if committed bindings drift. Run `pnpm build:rust-artifacts` (macOS for the full matrix, or `android` / `apple` alone) when you need local native libraries. Release CI rebuilds those artifacts from the release commit and uploads them as immutable workflow artifacts with lockfile, toolchain, and checksum metadata.
 
 ## Testing
 
