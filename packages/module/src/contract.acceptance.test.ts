@@ -229,16 +229,54 @@ class VirtualPlatformAuthenticator {
   }
 }
 
+const assertIosRegistrationPolicy = (request: NativeCreateRequest): void => {
+  if (request.authenticatorAttachment === "cross-platform") {
+    throw Object.assign(
+      new Error(
+        "authenticatorAttachment cross-platform is not supported on iOS; only platform passkeys are implemented"
+      ),
+      { code: "ERR_PASSKEY_VALIDATION" as const }
+    );
+  }
+
+  if (request.residentKey === "discouraged") {
+    throw Object.assign(
+      new Error(
+        "residentKey discouraged is incompatible with iOS platform passkeys, which are always discoverable"
+      ),
+      { code: "ERR_PASSKEY_VALIDATION" as const }
+    );
+  }
+
+  const pubKeyCredParams = request.pubKeyCredParams ?? [];
+  if (
+    pubKeyCredParams.length > 0 &&
+    !pubKeyCredParams.some((parameter) => parameter.alg === -7)
+  ) {
+    throw Object.assign(
+      new Error(
+        "none of the offered public-key algorithms are supported on iOS; include ES256 (alg -7)"
+      ),
+      { code: "ERR_PASSKEY_VALIDATION" as const }
+    );
+  }
+};
+
 const runCeremonyContract = async (
   registrationOrigin: string,
-  authenticationOrigin = registrationOrigin
+  authenticationOrigin = registrationOrigin,
+  registrationOverrides: Partial<PublicKeyCredentialCreationOptionsJSON> = {}
 ): Promise<void> => {
   const authenticator = new VirtualPlatformAuthenticator();
-  nativeModule.create.mockImplementation((request) =>
-    atBoundary("native registration mapping", () =>
+  nativeModule.create.mockImplementation((request) => {
+    if (nativeModule.getPlatform() === "ios") {
+      assertIosRegistrationPolicy(request);
+    }
+
+    return atBoundary("native registration mapping", () =>
       Promise.resolve(authenticator.create(request))
-    )
-  );
+    );
+  });
   nativeModule.get.mockImplementation((request) =>
     atBoundary("native authentication mapping", () =>
       Promise.resolve(authenticator.get(request))
@@ -264,6 +302,7 @@ const runCeremonyContract = async (
     () =>
       createPasskey({
         ...registrationOptions,
+        ...registrationOverrides,
         origin: registrationOrigin,
       } as PublicKeyCredentialCreationOptionsJSON)
   );
@@ -324,6 +363,10 @@ const runCeremonyContract = async (
 };
 
 describe("public package-to-relying-party contract", () => {
+  beforeEach(() => {
+    nativeModule.getPlatform.mockReturnValue("android");
+  });
+
   it.each(trustedOrigins)(
     "verifies registration and authentication with configured origin %s",
     async (origin) => {
@@ -342,4 +385,71 @@ describe("public package-to-relying-party contract", () => {
       runCeremonyContract("https://example.com", unknownAndroidOrigin)
     ).rejects.toThrow("relying-party authentication verification failed");
   });
+});
+
+describe("iOS registration policy acceptance", () => {
+  beforeEach(() => {
+    nativeModule.getPlatform.mockReturnValue("ios");
+  });
+
+  it("accepts supported attestation, algorithm, attachment, and resident-key policy", async () => {
+    await runCeremonyContract("https://example.com", "https://example.com", {
+      attestation: "direct",
+      authenticatorSelection: {
+        authenticatorAttachment: "platform",
+        requireResidentKey: true,
+        residentKey: "required",
+        userVerification: "required",
+      },
+      pubKeyCredParams: [
+        { alg: -257, type: "public-key" },
+        { alg: -7, type: "public-key" },
+      ],
+    });
+  });
+
+  it.each([
+    {
+      label: "cross-platform attachment",
+      overrides: {
+        authenticatorSelection: {
+          authenticatorAttachment: "cross-platform" as const,
+          residentKey: "preferred" as const,
+          userVerification: "required" as const,
+        },
+      },
+    },
+    {
+      label: "unsupported algorithms",
+      overrides: {
+        pubKeyCredParams: [
+          { alg: -8, type: "public-key" as const },
+          { alg: -257, type: "public-key" as const },
+        ],
+      },
+    },
+    {
+      label: "discouraged resident key",
+      overrides: {
+        authenticatorSelection: {
+          authenticatorAttachment: "platform" as const,
+          residentKey: "discouraged" as const,
+          userVerification: "required" as const,
+        },
+      },
+    },
+  ])(
+    "rejects $label with ERR_PASSKEY_VALIDATION before ceremony completion",
+    async ({ overrides }) => {
+      await expect(
+        runCeremonyContract("https://example.com", "https://example.com", overrides)
+      ).rejects.toMatchObject({
+        cause: expect.objectContaining({
+          code: "ERR_PASSKEY_VALIDATION",
+        }),
+        message: "public package registration failed",
+      });
+      expect(nativeModule.create).toHaveBeenCalled();
+    }
+  );
 });

@@ -86,6 +86,8 @@ authenticatorSelection: {
 }
 ```
 
+On iOS, unsupported registration constraints such as `authenticatorAttachment: "cross-platform"`, `residentKey: "discouraged"`, or `pubKeyCredParams` without ES256 (`alg: -7`) fail with `ERR_PASSKEY_VALIDATION` before biometric or device-authentication UI. See [Platforms](/docs/platform) for the full reachable attestation, algorithm, attachment, and resident-key policy.
+
 ## Associations
 
 If native UI fails before a credential is created, verify:

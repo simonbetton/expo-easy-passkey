@@ -134,6 +134,17 @@ Use the domain only. `rp.id` and `rpId` must not include `https://`, a path, or 
 
 The RP ID is separate from origin validation. On Android, `rp.id` remains the associated domain while the verified origin is the APK-key-hash value derived by Credential Manager.
 
+## iOS registration policy
+
+iOS registration uses AuthenticationServices platform passkeys only. Unsupported relying-party constraints fail with `ERR_PASSKEY_VALIDATION` before the system passkey UI appears.
+
+Reachable behavior:
+
+- `attestation` values `none`, `indirect`, `direct`, and `enterprise` are mapped onto the AuthenticationServices registration request.
+- Registration proceeds only when `pubKeyCredParams` is empty or includes ES256 (`alg: -7`). Empty parameter lists use the platform default, which remains ES256.
+- `authenticatorSelection.authenticatorAttachment` may be omitted or set to `platform`. `cross-platform` is rejected until security-key registration is implemented.
+- Platform passkeys are always discoverable. `residentKey` values `preferred` and `required`, and legacy `requireResidentKey` true or false, are accepted as that fixed semantics. `residentKey: "discouraged"` is rejected as incompatible.
+
 ## Device testing
 
 Final passkey testing needs real devices. Simulators and emulators may not match platform account, biometric, or credential provider behavior.
