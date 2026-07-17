@@ -49,7 +49,7 @@ The example app calls `apps/example-backend` for registration and authentication
 2. Set `expo.ios.bundleIdentifier` to a bundle ID registered to that team.
 3. Set the plugin `domains` entry to your relying-party domain, for example `login.example.com`.
 4. Start or deploy `apps/example-backend` on that domain with matching `PASSKEY_RP_ID` and `PASSKEY_ORIGIN` values.
-5. Set the backend trust env vars so it serves `/.well-known/apple-app-site-association` and `/.well-known/assetlinks.json` for the installed app build.
+5. Set the backend trust env vars so it serves `/.well-known/apple-app-site-association` and `/.well-known/assetlinks.json` for the installed app build. Include every trusted Android signing fingerprint in `ANDROID_SHA256_CERT_FINGERPRINTS`; the backend derives the exact Credential Manager APK-key-hash origins used for verification.
 6. Set `EXPO_PUBLIC_PASSKEY_API_BASE_URL` for `apps/example` if the backend is not hosted at the default demo URL.
 
 Then rebuild the native app:

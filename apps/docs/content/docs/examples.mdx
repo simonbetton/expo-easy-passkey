@@ -26,7 +26,7 @@ pnpm --filter @repo/example run ios
 
 The backend example uses in-memory storage. It demonstrates challenge and credential handling, but it is not durable across Vercel cold starts, multiple function instances, or redeploys.
 
-For local development, the backend can run on your machine, but real native passkey ceremonies still need `rp.id` and `origin` to match an associated domain trusted by iOS and Android. Keep `PASSKEY_RP_ID` set to your associated domain, and use a tunnel or hosted URL if the device must reach your local backend.
+For local development, the backend can run on your machine, but real native passkey ceremonies still need `rp.id` to remain the associated domain. iOS uses the HTTPS relying-party origin; Android Credential Manager derives an APK-key-hash origin from the installed signing certificate. Keep `PASSKEY_RP_ID` set to your associated domain, configure every trusted Android fingerprint on the backend, and use a tunnel or hosted URL if the device must reach your local API.
 
 ## API client
 
