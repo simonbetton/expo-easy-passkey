@@ -13,7 +13,7 @@ pnpm --filter expo-easy-passkey prepublishOnly
 pnpm --filter expo-easy-passkey pack --dry-run
 ```
 
-Release automation runs from GitHub Actions on `main`. Trusted jobs rebuild every supported Android ABI and Apple device/simulator slice from the release commit and locked Cargo graph, upload those outputs as immutable workflow artifacts with toolchain/lockfile/checksum metadata, smoke-test the packed package against those exact artifacts (ABI/slice inspection plus one FFI export per platform family), and block the release job when a build, required target, or smoke check fails. Downstream publication should consume those uploaded artifacts rather than previously committed binaries.
+Release automation runs from GitHub Actions on `main`. Trusted jobs rebuild every supported Android ABI and Apple device/simulator slice from the release commit and locked Cargo graph, upload those outputs as immutable workflow artifacts with toolchain/lockfile/checksum metadata, smoke-test the packed package against those exact artifacts, detect drift between committed binaries and trusted outputs, and stage only the trusted natives into the publication job. npm provenance (`publishConfig.provenance`) plus `release-evidence.json` ties the published package to source commit, lockfile digest, toolchain, target inventory, and checksums.
 
 Required repository setup:
 

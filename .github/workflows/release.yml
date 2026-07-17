@@ -135,23 +135,91 @@ jobs:
       - name: Smoke-test packed Apple native artifacts
         run: bash scripts/smoke-test-packaged-native-artifacts.sh --platform apple
 
+  check-native-artifact-drift:
+    name: Check committed native artifact drift
+    needs:
+      - build-android-native-artifacts
+      - build-apple-native-artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download immutable Android native artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: android-native-artifacts
+          path: ${{ runner.temp }}/trusted-android
+
+      - name: Download immutable Apple native artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: apple-native-artifacts
+          path: ${{ runner.temp }}/trusted-apple
+
+      - name: Compare committed Android natives to trusted build outputs
+        run: >
+          bash scripts/check-native-artifact-drift.sh
+          --committed-root packages/module
+          --generated-root "${{ runner.temp }}/trusted-android/packages/module"
+          --platform android
+
+      - name: Compare committed Apple natives to trusted build outputs
+        run: >
+          bash scripts/check-native-artifact-drift.sh
+          --committed-root packages/module
+          --generated-root "${{ runner.temp }}/trusted-apple/packages/module"
+          --platform apple
+
   release:
     name: Release
     needs:
       - smoke-android-native-artifacts
       - smoke-apple-native-artifacts
+      - check-native-artifact-drift
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: pnpm
           registry-url: https://registry.npmjs.org
+
       - uses: dtolnay/rust-toolchain@1.89.0
+
+      - name: Download immutable Android native artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: android-native-artifacts
+          path: ${{ runner.temp }}/trusted-android
+
+      - name: Download immutable Apple native artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: apple-native-artifacts
+          path: ${{ runner.temp }}/trusted-apple
+
+      - name: Stage trusted natives for publication
+        run: >
+          bash scripts/prepare-trusted-native-artifacts.sh
+          --package-dir packages/module
+          --android-from "${{ runner.temp }}/trusted-android/packages/module"
+          --apple-from "${{ runner.temp }}/trusted-apple/packages/module"
+          --expected-source-commit "${{ github.sha }}"
+          --evidence-output packages/module/.rust-artifacts/release-evidence.json
+
+      - name: Upload release evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-native-evidence
+          path: packages/module/.rust-artifacts/release-evidence.json
+          if-no-files-found: error
+          retention-days: 30
+
       - run: pnpm install --frozen-lockfile
       - run: pnpm rust:fmt
       - run: pnpm rust:clippy
@@ -159,6 +227,18 @@ jobs:
       - run: pnpm check
       - run: pnpm build
       - run: pnpm pack:check
+
+      - name: Pack module for evidence verification
+        working-directory: packages/module
+        run: npm pack --pack-destination "${{ runner.temp }}"
+
+      - name: Verify packed natives match release evidence
+        run: |
+          TARBALL="$(ls "${{ runner.temp }}"/expo-easy-passkey-*.tgz | head -n 1)"
+          bash scripts/prepare-trusted-native-artifacts.sh \
+            --verify-tarball "$TARBALL" \
+            --evidence-output packages/module/.rust-artifacts/release-evidence.json
+
       - uses: changesets/action@v1
         with:
           publish: pnpm release
