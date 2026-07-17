@@ -62,7 +62,18 @@ For alpha releases, verify that the latest alpha is on the `alpha` dist-tag and 
 
 The release workflow runs on pushes to `main` and on manual `workflow_dispatch`.
 
-It performs:
+Before publication work starts, trusted jobs rebuild native Rust artifacts from the checked-out release commit and the committed `Cargo.lock`:
+
+- Android builds every supported ABI (`arm64-v8a`, `armeabi-v7a`, `x86`, `x86_64`) on Linux with the NDK.
+- Apple builds the device (`ios-arm64`) and simulator (`ios-arm64_x86_64-simulator`) xcframework slices on macOS.
+
+Those jobs upload immutable workflow artifacts plus metadata that records the source commit, lockfile digest, toolchain identity, target inventory, and output checksums. A missing supported target or build failure blocks the downstream release job.
+
+Separate smoke jobs then download those exact artifacts (they do not rebuild natives), pack `expo-easy-passkey`, install the tarball into disposable Android and Apple consumers, inspect every required ABI and Apple device/simulator slice, and execute one exported UniFFI helper from the packaged runtime for each platform family. Missing, stale, mismatched, or unloadable binaries fail before publication.
+
+A drift job compares the committed package natives to the independently rebuilt trusted outputs. Drift fails CI so committed binaries cannot silently diverge, but those committed files are never used as release evidence.
+
+The release job downloads the same smoke-validated Android and Apple artifacts into isolated staging directories, runs `prepare-trusted-native-artifacts` to wipe package native paths and install only those trusted outputs, writes `packages/module/.rust-artifacts/release-evidence.json` (source commit, lockfile digest, per-platform toolchain, target inventory, and checksums), uploads that evidence, then performs:
 
 ```sh
 pnpm install --frozen-lockfile
@@ -73,6 +84,8 @@ pnpm check
 pnpm build
 pnpm pack:check
 ```
+
+Publication cannot fall back to checkout binaries: prepare replaces them before `pack:check` and `changeset publish`. npm provenance remains enabled via `publishConfig.provenance` and the workflow `id-token: write` permission, so the published package is attested to this workflow run and commit.
 
 Then `changesets/action` either opens the release PR or publishes with:
 
@@ -108,15 +121,25 @@ pnpm --filter expo-easy-passkey pack --dry-run
 
 Before release, run device E2E too. Passkey ceremonies depend on platform accounts, signing certificates, associated domains, Digital Asset Links, credential providers, and user verification UI. Follow `Device E2E` and record the device model, OS version, app build profile, relying-party domain, and server environment used for the final pass.
 
-When Rust, UniFFI, or native helper code changes, regenerate packageable native Rust artifacts from macOS before opening the release PR:
+When Rust, UniFFI, or native helper code changes, regenerate packageable native Rust artifacts locally for development and review. Trusted release jobs rebuild and upload immutable artifacts with metadata, then smoke-test the packed package against those outputs before publication:
 
 ```sh
 pnpm build:rust-artifacts
+# or platform-scoped:
+# pnpm build:rust-artifacts -- android
+# pnpm build:rust-artifacts -- apple
 pnpm bindgen:check
+pnpm --filter expo-easy-passkey build
+# After metadata exists under packages/module/.rust-artifacts/:
+# pnpm smoke:native-artifacts -- --platform apple
+# pnpm smoke:native-artifacts -- --platform android
+# pnpm check:native-artifact-drift -- --committed-root packages/module --generated-root <trusted> --platform all
+# pnpm prepare:trusted-native-artifacts -- --android-from <trusted-android> --apple-from <trusted-apple> \
+#   --expected-source-commit <sha> --evidence-output packages/module/.rust-artifacts/release-evidence.json
 pnpm pack:check
 ```
 
-The artifact build writes Android shared libraries to `packages/module/android/src/main/jniLibs` and the iOS xcframework to `packages/module/ios/rust`.
+The artifact build writes Android shared libraries to `packages/module/android/src/main/jniLibs`, the iOS xcframework to `packages/module/ios/rust`, and metadata under `packages/module/.rust-artifacts/`. Release publication stages only trusted CI artifacts via `prepare:trusted-native-artifacts` and ships `release-evidence.json` inside the npm package.
 
 ## Failures
 
