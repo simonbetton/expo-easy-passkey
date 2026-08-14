@@ -24,7 +24,33 @@ const routes = [
   "/passkeys/authenticate/verify",
 ] as const;
 
+const webAuthnResponseSchema = t.Object(
+  {
+    authenticatorAttachment: t.Optional(t.String()),
+    clientExtensionResults: t.Optional(t.Record(t.String(), t.Unknown())),
+    id: t.String({ minLength: 1 }),
+    rawId: t.String({ minLength: 1 }),
+    response: t.Object({}, { additionalProperties: true }),
+    type: t.Literal("public-key"),
+  },
+  { additionalProperties: true }
+);
+
+const verifyBodySchema = t.Object({
+  ceremonyId: t.String({ minLength: 1 }),
+  response: webAuthnResponseSchema,
+});
+
 const app = new Elysia()
+  .onError(({ code, error, set }) => {
+    if (code === "VALIDATION") {
+      set.status = 400;
+      return errorResponse(new Error("Invalid request."));
+    }
+
+    set.status = 400;
+    return errorResponse(error);
+  })
   .get("/", () =>
     jsonResponse({
       name: "expo-easy-passkey example backend",
@@ -50,7 +76,7 @@ const app = new Elysia()
       try {
         return jsonResponse(
           await verifyRegistration(
-            body as CeremonyVerificationRequest<RegistrationResponseJSON>
+            body as unknown as CeremonyVerificationRequest<RegistrationResponseJSON>
           )
         );
       } catch (error) {
@@ -58,7 +84,7 @@ const app = new Elysia()
       }
     },
     {
-      body: t.Unknown(),
+      body: verifyBodySchema,
     }
   )
   .post("/passkeys/authenticate/options", async () => {
@@ -74,7 +100,7 @@ const app = new Elysia()
       try {
         return jsonResponse(
           await verifyAuthentication(
-            body as CeremonyVerificationRequest<AuthenticationResponseJSON>
+            body as unknown as CeremonyVerificationRequest<AuthenticationResponseJSON>
           )
         );
       } catch (error) {
@@ -82,7 +108,7 @@ const app = new Elysia()
       }
     },
     {
-      body: t.Unknown(),
+      body: verifyBodySchema,
     }
   );
 

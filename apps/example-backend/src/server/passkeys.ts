@@ -70,8 +70,10 @@ export const createPasskeyService = (
   };
 
   /**
-   * Load the matching unexpired ceremony challenge, run verification, then
-   * atomically consume the record. Failed verification does not consume.
+   * Claim the ceremony before side effects so only one in-process verify can
+   * write. Failed cryptographic verification releases the claim for retry.
+   * Production still needs a shared durable store with atomic conditional
+   * consumption across instances.
    */
   const verifyThenConsume = async <T>(
     kind: CeremonyKind,
@@ -84,10 +86,16 @@ export const createPasskeyService = (
       kind,
       userId: user.id,
     };
-    const expectedChallenge = store.getCeremonyChallenge(ceremony);
-    const result = await verify(expectedChallenge);
-    store.consumeCeremony(ceremony, expectedChallenge);
-    return result;
+    const expectedChallenge = store.claimCeremony(ceremony);
+
+    try {
+      const result = await verify(expectedChallenge);
+      store.consumeCeremony(ceremony, expectedChallenge);
+      return result;
+    } catch (error) {
+      store.releaseCeremony(ceremony);
+      throw error;
+    }
   };
 
   const getRegistrationOptions = async () => {

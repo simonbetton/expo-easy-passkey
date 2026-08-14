@@ -61,7 +61,7 @@ ANDROID_SHA256_CERT_FINGERPRINTS=12:34:56:78:90:AB:CD:EF:12:34:56:78:90:AB:CD:EF
 
 `ANDROID_SHA256_CERT_FINGERPRINTS` is a comma-separated allowlist. Each value must contain exactly 32 colon-separated certificate bytes. At startup, the example backend converts those bytes to unpadded base64url and builds an exact verification allowlist containing `PASSKEY_ORIGIN` plus one `android:apk-key-hash:<base64url>` origin per certificate. Invalid fingerprints or a `PASSKEY_ORIGIN` that is not an exact HTTPS origin stop startup.
 
-The backend uses a concurrency-safe in-memory demo store for pending ceremonies and credentials. Distinct, expiring ceremony records make overlapping requests and single-use verification safe within one server process. The state is not durable or coordinated across cold starts, multiple function instances, or redeploys. Treat it as a local demonstration, not production persistence; production deployments need a shared durable store with atomic conditional consumption.
+The backend uses a concurrency-safe in-memory demo store for pending ceremonies and credentials. Distinct, expiring ceremony records make overlapping requests and single-use verification safe within one server process: verification claims a ceremony before credential writes, so two concurrent verifies of the same ceremony ID can produce at most one Passkey Credential or sign-counter update. Failed cryptographic verification releases the claim so a later retry can run. The state is not durable or coordinated across cold starts, multiple function instances, or redeploys. Treat it as a local demonstration, not production persistence; production deployments need a shared durable store with atomic conditional consumption.
 
 ## Registration
 
