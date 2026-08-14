@@ -2,7 +2,7 @@ package expo.modules.easypasskey
 
 import androidx.credentials.exceptions.NoCredentialException
 import androidx.credentials.exceptions.domerrors.AbortError
-import androidx.credentials.exceptions.publickey.GetPublicKeyCredentialDomException
+import androidx.credentials.exceptions.publickeycredential.GetPublicKeyCredentialDomException
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows

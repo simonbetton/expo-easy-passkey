@@ -7,8 +7,8 @@ import androidx.credentials.PublicKeyCredential
 import androidx.credentials.exceptions.CreateCredentialCancellationException
 import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.credentials.exceptions.NoCredentialException
-import androidx.credentials.exceptions.publickey.CreatePublicKeyCredentialDomException
-import androidx.credentials.exceptions.publickey.GetPublicKeyCredentialDomException
+import androidx.credentials.exceptions.publickeycredential.CreatePublicKeyCredentialDomException
+import androidx.credentials.exceptions.publickeycredential.GetPublicKeyCredentialDomException
 import org.json.JSONArray
 import org.json.JSONObject
 
