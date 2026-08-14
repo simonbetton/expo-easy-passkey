@@ -107,10 +107,10 @@ Trusted release artifact coverage
 - prepare-trusted-native-artifacts + packed tarball evidence verification
 
 Publication blockers
-- pnpm check (includes contract, ceremony, and web import suites)
-- pnpm test:acceptance
+- pnpm check (owns contract, ceremony, and web import Jest suites)
 - pnpm verify:release-acceptance
 - pnpm pack:check
+- local pnpm test:acceptance remains the focused acceptance subset
 - trusted native smoke / exact-artifact staging failures
 
 Required real-device evidence (Device E2E)
@@ -156,7 +156,7 @@ require_contains "packages/module/package.json" '"provenance": true' "npm proven
 require_contains "scripts/build-rust-artifacts.sh" "--artifacts-root" "build script honors isolated artifact roots"
 
 require_contains ".github/workflows/ci.yml" "pnpm check" "CI contract suite via pnpm check"
-require_contains ".github/workflows/ci.yml" "pnpm test:acceptance" "CI named acceptance suite"
+require_absent ".github/workflows/ci.yml" "pnpm test:acceptance" "duplicate CI acceptance Jest run"
 require_contains ".github/workflows/ci.yml" "pnpm verify:release-acceptance" "CI acceptance-plan verification"
 require_contains ".github/workflows/ci.yml" "pnpm build:rust-artifacts android" "CI Android native artifact build"
 require_contains ".github/workflows/ci.yml" "pnpm build:rust-artifacts apple" "CI Apple native artifact build"
@@ -180,7 +180,7 @@ require_contains ".github/workflows/release.yml" "smoke-android-native-artifacts
 require_contains ".github/workflows/release.yml" "smoke-apple-native-artifacts" "Apple packaged-target / FFI smoke"
 require_contains ".github/workflows/release.yml" "prepare-trusted-native-artifacts.sh" "exact-artifact publication staging"
 require_contains ".github/workflows/release.yml" "- run: pnpm check" "release contract/web import gate"
-require_contains ".github/workflows/release.yml" "pnpm test:acceptance" "release named acceptance suite"
+require_absent ".github/workflows/release.yml" "pnpm test:acceptance" "duplicate release acceptance Jest run"
 require_contains ".github/workflows/release.yml" "pnpm verify:release-acceptance" "release acceptance-plan verification"
 require_contains ".github/workflows/release.yml" "pnpm pack:check" "release pack inspection gate"
 require_contains ".github/workflows/release.yml" "Verify packed natives match release evidence" "packed tarball identity check"

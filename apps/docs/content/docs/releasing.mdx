@@ -44,7 +44,7 @@ Review the release PR before merging it:
 - Confirm only `expo-easy-passkey` is versioned.
 - Confirm `packages/module/CHANGELOG.md` describes the release clearly.
 - Confirm package metadata still points to the single installable package.
-- Confirm CI is green, including `pnpm test:acceptance` and `pnpm verify:release-acceptance`.
+- Confirm CI is green, including `pnpm check` and `pnpm verify:release-acceptance`.
 - Confirm required manual device E2E notes are recorded under Release evidence below.
 - Confirm response shapes and public error codes are unchanged, or that the changelog includes an explicit compatibility note.
 
@@ -82,7 +82,6 @@ pnpm rust:fmt
 pnpm rust:clippy
 pnpm bindgen:check
 pnpm check
-pnpm test:acceptance
 pnpm verify:release-acceptance
 pnpm build
 pnpm pack:check
@@ -147,6 +146,8 @@ pnpm bindgen:check
 pnpm --filter expo-easy-passkey prepublishOnly
 pnpm --filter expo-easy-passkey pack --dry-run
 ```
+
+`pnpm verify` already includes `pnpm check`, which runs the acceptance Jest files. `pnpm test:acceptance` is the local subset if you want to re-run only those suites.
 
 Before release, run device E2E too. Passkey ceremonies depend on platform accounts, signing certificates, associated domains, Digital Asset Links, credential providers, and user verification UI. Follow `Device E2E` and complete the Release evidence checklist above.
 

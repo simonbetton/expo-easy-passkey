@@ -111,4 +111,20 @@ if "$SCRIPT" --root "$FIXTURE_ROOT" >/dev/null 2>&1; then
 fi
 pass "releasing docs must record real-device and compatibility evidence"
 
+# Restore docs and reintroduce a duplicate acceptance Jest run in CI.
+cp "$ROOT_DIR/apps/docs/content/docs/releasing.mdx" \
+  "$FIXTURE_ROOT/apps/docs/content/docs/releasing.mdx"
+python3 - <<'PY' "$FIXTURE_ROOT/.github/workflows/ci.yml"
+from pathlib import Path
+import sys
+path = Path(sys.argv[1])
+text = path.read_text()
+path.write_text(text.replace("- run: pnpm check\n", "- run: pnpm check\n      - run: pnpm test:acceptance\n"))
+PY
+
+if "$SCRIPT" --root "$FIXTURE_ROOT" >/dev/null 2>&1; then
+  fail "duplicate CI acceptance Jest run should fail verification"
+fi
+pass "CI must not re-run pnpm test:acceptance after check"
+
 echo "All verify-release-acceptance seam tests passed."
