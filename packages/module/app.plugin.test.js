@@ -43,4 +43,45 @@ describe("withExpoEasyPasskey", () => {
       },
     });
   });
+
+  it("accepts a bare relying-party hostname", () => {
+    const result = withExpoEasyPasskey({}, { domains: ["example.com"] });
+
+    expect(result.ios?.associatedDomains).toEqual([
+      "webcredentials:example.com",
+    ]);
+  });
+
+  it("accepts already-prefixed webcredentials entries", () => {
+    const result = withExpoEasyPasskey(
+      {},
+      { domains: ["webcredentials:login.example.com"] }
+    );
+
+    expect(result.ios?.associatedDomains).toEqual([
+      "webcredentials:login.example.com",
+    ]);
+  });
+
+  it("ignores empty and whitespace-only domains", () => {
+    const result = withExpoEasyPasskey(
+      {},
+      { domains: ["example.com", "", "   ", "\t"] }
+    );
+
+    expect(result.ios?.associatedDomains).toEqual([
+      "webcredentials:example.com",
+    ]);
+  });
+
+  it.each([
+    ["https://example.com"],
+    ["example.com/login"],
+    ["example.com:443"],
+    ["user@example.com"],
+  ])("rejects invalid domain %s during prebuild", (domain) => {
+    expect(() => withExpoEasyPasskey({}, { domains: [domain] })).toThrow(
+      `Invalid Expo Easy Passkey plugin domain "${domain}": Relying Party domains must be hostnames without scheme, path, or port.`
+    );
+  });
 });

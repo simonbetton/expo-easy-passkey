@@ -40,7 +40,7 @@ Expo Go cannot load custom native modules, so use a development build or product
 - Public TypeScript APIs for passkey registration, authentication, availability checks, and typed errors.
 - Native iOS AuthenticationServices and Android Credential Manager bridge code.
 - Rust-backed UniFFI helper libraries for shared WebAuthn normalization and validation.
-- An Expo config plugin for Associated Domains and Android verified app links.
+- An Expo config plugin for iOS Associated Domains (`webcredentials:`). Android Digital Asset Links are hosted separately; see the Platforms docs.
 - Generated native binding files used by the runtime helper layer and repository validation.
 
 Your relying-party server still creates challenges, verifies responses, stores credential public keys, and protects against replay.

@@ -134,6 +134,15 @@ Use the domain only. `rp.id` and `rpId` must not include `https://`, a path, or 
 
 The RP ID is separate from origin validation. On Android, `rp.id` remains the associated domain while the verified origin is the APK-key-hash value derived by Credential Manager.
 
+## Timeout hint
+
+Registration and authentication options accept WebAuthn `timeout` in milliseconds on every platform. Treat it as a hint, not a guaranteed cancel deadline:
+
+- Android forwards the value into Credential Manager public-key JSON when it is present.
+- iOS AuthenticationServices accepts the field on the native request objects but does not apply a consumer timeout.
+
+Omit `timeout` when you do not have a server-supplied value. Do not strip it on iOS just because the platform ignores it.
+
 ## iOS registration policy
 
 iOS registration uses AuthenticationServices platform passkeys only. Unsupported relying-party constraints fail with `ERR_PASSKEY_VALIDATION` before the system passkey UI appears.
