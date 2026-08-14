@@ -1,11 +1,7 @@
 import AuthenticationServices
-import ExpoModulesCore
 import Foundation
-import UIKit
 
-final class ExpoEasyPasskeyCeremonyAdapter: NSObject {
-  typealias PresentationAnchorProvider = () -> ASPresentationAnchor
-
+final class ExpoEasyPasskeyCeremonyAdapter {
   static var isSupported: Bool {
     if #available(iOS 16.0, *) {
       return true
@@ -14,11 +10,16 @@ final class ExpoEasyPasskeyCeremonyAdapter: NSObject {
     return false
   }
 
-  private let presentationAnchorProvider: PresentationAnchorProvider
-  private var continuation: CheckedContinuation<[String: Any], Error>?
+  private let platformController: PasskeyPlatformControlling
 
-  init(presentationAnchorProvider: @escaping PresentationAnchorProvider) {
-    self.presentationAnchorProvider = presentationAnchorProvider
+  init(platformController: PasskeyPlatformControlling) {
+    self.platformController = platformController
+  }
+
+  init(presentationAnchorProvider: @escaping AuthenticationServicesController.PresentationAnchorProvider) {
+    self.platformController = AuthenticationServicesController(
+      presentationAnchorProvider: presentationAnchorProvider
+    )
   }
 
   func create(
@@ -43,7 +44,7 @@ final class ExpoEasyPasskeyCeremonyAdapter: NSObject {
     applyUserVerification(request.userVerification, to: registrationRequest)
     try applyExcludedCredentials(request.excludeCredentials, to: registrationRequest)
 
-    return try await perform([registrationRequest])
+    return try await complete(registrationRequest)
   }
 
   func get(_ request: PasskeyGetRequest) async throws -> [String: Any] {
@@ -61,17 +62,25 @@ final class ExpoEasyPasskeyCeremonyAdapter: NSObject {
     applyAllowedCredentials(request.allowCredentials, to: assertionRequest)
     applyUserVerification(request.userVerification, to: assertionRequest)
 
-    return try await perform([assertionRequest])
+    return try await complete(assertionRequest)
   }
 
-  @MainActor
-  private func perform(_ requests: [ASAuthorizationRequest]) async throws -> [String: Any] {
-    try await withCheckedThrowingContinuation { continuation in
-      self.continuation = continuation
-      let controller = ASAuthorizationController(authorizationRequests: requests)
-      controller.delegate = self
-      controller.presentationContextProvider = self
-      controller.performRequests()
+  private func complete(_ request: ASAuthorizationRequest) async throws -> [String: Any] {
+    do {
+      switch try await platformController.perform([request]) {
+      case let .registration(fields):
+        return try mapRegistrationFields(fields)
+      case let .assertion(fields):
+        return mapAssertionFields(fields)
+      case .unsupported:
+        throw PasskeyNativeException("Unsupported authorization credential response.")
+      }
+    } catch let error as PasskeyValidationException {
+      throw error
+    } catch let error as PasskeyNativeException {
+      throw error
+    } catch {
+      throw mapAuthorizationError(error)
     }
   }
 
@@ -105,11 +114,13 @@ final class ExpoEasyPasskeyCeremonyAdapter: NSObject {
       return
     }
 
-    guard #available(iOS 17.4, *) else {
+    guard platformController.supportsExcludedCredentials else {
       throw PasskeyValidationException("excludeCredentials requires iOS 17.4 or newer")
     }
 
-    request.excludedCredentials = credentials.map(platformCredentialDescriptor)
+    if #available(iOS 17.4, *) {
+      request.excludedCredentials = credentials.map(platformCredentialDescriptor)
+    }
   }
 
   private func platformCredentialDescriptor(
@@ -143,105 +154,4 @@ final class ExpoEasyPasskeyCeremonyAdapter: NSObject {
       return nil
     }
   }
-}
-
-extension ExpoEasyPasskeyCeremonyAdapter: ASAuthorizationControllerPresentationContextProviding {
-  func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
-    presentationAnchorProvider()
-  }
-}
-
-extension ExpoEasyPasskeyCeremonyAdapter: ASAuthorizationControllerDelegate {
-  func authorizationController(
-    controller: ASAuthorizationController,
-    didCompleteWithAuthorization authorization: ASAuthorization
-  ) {
-    do {
-      if let credential = authorization.credential as? ASAuthorizationPlatformPublicKeyCredentialRegistration {
-        continuation?.resume(returning: try mapRegistrationCredential(credential))
-      } else if let credential = authorization.credential as? ASAuthorizationPlatformPublicKeyCredentialAssertion {
-        continuation?.resume(returning: mapAssertionCredential(credential))
-      } else {
-        continuation?.resume(throwing: PasskeyNativeException("Unsupported authorization credential response."))
-      }
-    } catch {
-      continuation?.resume(throwing: error)
-    }
-
-    continuation = nil
-  }
-
-  func authorizationController(
-    controller: ASAuthorizationController,
-    didCompleteWithError error: Error
-  ) {
-    if let authorizationError = error as? ASAuthorizationError {
-      switch authorizationError.code {
-      case .canceled:
-        continuation?.resume(throwing: PasskeyCanceledException())
-      case .invalidResponse:
-        continuation?.resume(
-          throwing: PasskeyInvalidCredentialException(error.localizedDescription)
-        )
-      case .notHandled:
-        continuation?.resume(
-          throwing: PasskeyNoCredentialException(error.localizedDescription)
-        )
-      default:
-        continuation?.resume(throwing: PasskeyNativeException(error.localizedDescription))
-      }
-    } else {
-      continuation?.resume(throwing: PasskeyNativeException(error.localizedDescription))
-    }
-
-    continuation = nil
-  }
-}
-
-private func mapRegistrationCredential(
-  _ credential: ASAuthorizationPlatformPublicKeyCredentialRegistration
-) throws -> [String: Any] {
-  let id = PasskeyEncoding.encodeBase64Url(credential.credentialID)
-  guard let attestationObject = credential.rawAttestationObject,
-        !attestationObject.isEmpty else {
-    throw PasskeyNativeException("Registration response is missing an attestation object.")
-  }
-
-  return [
-    "id": id,
-    "rawId": id,
-    "type": "public-key",
-    "response": [
-      "clientDataJSON": PasskeyEncoding.encodeBase64Url(credential.rawClientDataJSON),
-      "attestationObject": PasskeyEncoding.encodeBase64Url(attestationObject)
-    ],
-    "clientExtensionResults": [:],
-    "authenticatorAttachment": "platform"
-  ]
-}
-
-private func mapAssertionCredential(
-  _ credential: ASAuthorizationPlatformPublicKeyCredentialAssertion
-) -> [String: Any] {
-  let id = PasskeyEncoding.encodeBase64Url(credential.credentialID)
-  var response: [String: Any] = [
-    "clientDataJSON": PasskeyEncoding.encodeBase64Url(credential.rawClientDataJSON),
-    "authenticatorData": PasskeyEncoding.encodeBase64Url(credential.rawAuthenticatorData),
-    "signature": PasskeyEncoding.encodeBase64Url(credential.signature)
-  ]
-
-  if let userID = credential.userID {
-    response["userHandle"] = PasskeyEncoding.encodeBase64Url(userID)
-  } else {
-    response["userHandle"] = NSNull()
-  }
-
-  return [
-    "id": id,
-    "rawId": id,
-    "type": "public-key",
-    "response": response,
-    "clientExtensionResults": [:],
-    "authenticatorAttachment": "platform"
-  ]
 }
