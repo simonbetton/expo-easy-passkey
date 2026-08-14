@@ -1,5 +1,8 @@
 package expo.modules.easypasskey
 
+import androidx.credentials.exceptions.NoCredentialException
+import androidx.credentials.exceptions.domerrors.AbortError
+import androidx.credentials.exceptions.publickeycredential.GetPublicKeyCredentialDomException
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
@@ -30,6 +33,7 @@ class PasskeyRequestMapperTest {
         ),
         "userVerification" to "required",
         "residentKey" to "preferred",
+        "timeout" to 60_000,
         "pubKeyCredParams" to listOf(mapOf("type" to "public-key", "alg" to -7)),
       )
     )
@@ -39,6 +43,7 @@ class PasskeyRequestMapperTest {
     assertEquals("Y2hhbGxlbmdl", publicKey.getString("challenge"))
     assertEquals("example.com", publicKey.getJSONObject("rp").getString("id"))
     assertEquals("dXNlcg", publicKey.getJSONObject("user").getString("id"))
+    assertEquals(60_000, publicKey.getInt("timeout"))
     assertEquals(
       "required",
       publicKey.getJSONObject("authenticatorSelection").getString("userVerification")
@@ -51,6 +56,7 @@ class PasskeyRequestMapperTest {
       mapOf(
         "challenge" to "YXV0aA==",
         "rpId" to "Example.COM",
+        "timeout" to 30_000,
         "allowCredentials" to listOf(mapOf("id" to "Y3JlZA==", "type" to "public-key")),
       )
     )
@@ -59,6 +65,7 @@ class PasskeyRequestMapperTest {
 
     assertEquals("YXV0aA", publicKey.getString("challenge"))
     assertEquals("example.com", publicKey.getString("rpId"))
+    assertEquals(30_000, publicKey.getInt("timeout"))
     assertEquals(
       "Y3JlZA",
       publicKey.getJSONArray("allowCredentials").getJSONObject(0).getString("id")
@@ -92,9 +99,6 @@ class PasskeyRequestMapperTest {
 
   @Test
   fun mapsCredentialManagerErrorsToSpecificPasskeyErrors() {
-    class NoCredentialException(message: String) : RuntimeException(message)
-    class GetPublicKeyCredentialDomException(message: String) : RuntimeException(message)
-
     assertTrue(
       mapCredentialManagerError(
         NoCredentialException("No credential available"),
@@ -103,7 +107,7 @@ class PasskeyRequestMapperTest {
     )
     assertTrue(
       mapCredentialManagerError(
-        GetPublicKeyCredentialDomException("Invalid credential response"),
+        GetPublicKeyCredentialDomException(AbortError(), "Invalid credential response"),
         "fallback"
       ) is PasskeyInvalidCredentialException
     )

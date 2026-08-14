@@ -40,9 +40,12 @@ pass "repository acceptance gates are wired"
 
 mkdir -p "$FIXTURE_ROOT/.github/workflows" "$FIXTURE_ROOT/packages/module/src" \
   "$FIXTURE_ROOT/apps/example-backend/src/server" \
-  "$FIXTURE_ROOT/apps/docs/content/docs"
+  "$FIXTURE_ROOT/apps/docs/content/docs" \
+  "$FIXTURE_ROOT/scripts"
 cp "$ROOT_DIR/.github/workflows/ci.yml" "$FIXTURE_ROOT/.github/workflows/ci.yml"
 cp "$ROOT_DIR/.github/workflows/release.yml" "$FIXTURE_ROOT/.github/workflows/release.yml"
+cp "$ROOT_DIR/packages/module/package.json" "$FIXTURE_ROOT/packages/module/package.json"
+cp "$ROOT_DIR/scripts/build-rust-artifacts.sh" "$FIXTURE_ROOT/scripts/build-rust-artifacts.sh"
 cp "$ROOT_DIR/packages/module/src/contract.acceptance.test.ts" \
   "$FIXTURE_ROOT/packages/module/src/contract.acceptance.test.ts"
 cp "$ROOT_DIR/packages/module/src/unsupported.runtime.test.ts" \
@@ -107,5 +110,21 @@ if "$SCRIPT" --root "$FIXTURE_ROOT" >/dev/null 2>&1; then
   fail "releasing docs without real-device evidence requirements should fail"
 fi
 pass "releasing docs must record real-device and compatibility evidence"
+
+# Restore docs and reintroduce a duplicate acceptance Jest run in CI.
+cp "$ROOT_DIR/apps/docs/content/docs/releasing.mdx" \
+  "$FIXTURE_ROOT/apps/docs/content/docs/releasing.mdx"
+python3 - <<'PY' "$FIXTURE_ROOT/.github/workflows/ci.yml"
+from pathlib import Path
+import sys
+path = Path(sys.argv[1])
+text = path.read_text()
+path.write_text(text.replace("- run: pnpm check\n", "- run: pnpm check\n      - run: pnpm test:acceptance\n"))
+PY
+
+if "$SCRIPT" --root "$FIXTURE_ROOT" >/dev/null 2>&1; then
+  fail "duplicate CI acceptance Jest run should fail verification"
+fi
+pass "CI must not re-run pnpm test:acceptance after check"
 
 echo "All verify-release-acceptance seam tests passed."

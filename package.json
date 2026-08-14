@@ -34,7 +34,7 @@
     "typecheck": "npx tsgo --noEmit && pnpm -r --if-present typecheck:test",
     "verify": "pnpm rust:fmt && pnpm rust:clippy && pnpm bindgen:check && pnpm check && pnpm build",
     "verify:release-acceptance": "bash scripts/verify-release-acceptance.sh",
-    "version-packages": "changeset version"
+    "version-packages": "changeset version && pnpm format"
   },
   "devDependencies": {
     "@changesets/cli": "^2.29.7",

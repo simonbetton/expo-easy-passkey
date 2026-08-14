@@ -21,11 +21,14 @@ export interface CeremonyRef {
   userId: string;
 }
 
+export type CeremonyStatus = "pending" | "processing";
+
 export interface StoredCeremony {
   challenge: string;
   ceremonyId: string;
   expiresAt: number;
   kind: CeremonyKind;
+  status: CeremonyStatus;
   userId: string;
 }
 
@@ -96,6 +99,26 @@ export const createDemoStore = ({
     [...passkeys.values()].filter((passkey) => passkey.userId === userId);
 
   return {
+    /**
+     * Atomically move a pending ceremony to processing. Only one claim can
+     * succeed per ceremony ID. Failed verification should `releaseCeremony`
+     * so a later retry can claim again; success should `consumeCeremony`.
+     */
+    claimCeremony(ceremony: CeremonyRef): string {
+      const storedCeremony = getCeremony(ceremony);
+
+      if (storedCeremony.status !== "pending") {
+        throw new Error("No matching passkey ceremony is pending.");
+      }
+
+      ceremonies.set(ceremony.ceremonyId, {
+        ...storedCeremony,
+        status: "processing",
+      });
+
+      return storedCeremony.challenge;
+    },
+
     consumeCeremony(ceremony: CeremonyRef, expectedChallenge: string): void {
       const storedCeremony = getCeremony(ceremony);
 
@@ -125,6 +148,7 @@ export const createDemoStore = ({
         challenge,
         expiresAt: currentTime + ttlMs,
         kind,
+        status: "pending",
         userId,
       });
 
@@ -145,6 +169,19 @@ export const createDemoStore = ({
 
     getUserPasskeys(): StoredPasskey[] {
       return getUserPasskeys(demoUser.id);
+    },
+
+    releaseCeremony(ceremony: CeremonyRef): void {
+      const storedCeremony = ceremonies.get(ceremony.ceremonyId);
+
+      if (storedCeremony?.status !== "processing") {
+        return;
+      }
+
+      ceremonies.set(ceremony.ceremonyId, {
+        ...storedCeremony,
+        status: "pending",
+      });
     },
 
     savePasskey(passkey: StoredPasskey): void {

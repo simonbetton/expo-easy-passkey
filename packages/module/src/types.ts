@@ -39,7 +39,11 @@ export interface NativeCreateRequest {
    * Origin validation is separate from RP ID validation.
    */
   origin?: string;
-  /** Optional ceremony timeout in milliseconds. */
+  /**
+   * Optional WebAuthn timeout hint in milliseconds. Android may forward this
+   * to Credential Manager; iOS AuthenticationServices ignores it. Not a
+   * guaranteed cross-platform cancel deadline.
+   */
   timeout?: number;
   /** Requirement for local user verification during registration. */
   userVerification?: "required" | "preferred" | "discouraged";
@@ -81,7 +85,11 @@ export interface NativeGetRequest {
    * Origin validation is separate from RP ID validation.
    */
   origin?: string;
-  /** Optional ceremony timeout in milliseconds. */
+  /**
+   * Optional WebAuthn timeout hint in milliseconds. Android may forward this
+   * to Credential Manager; iOS AuthenticationServices ignores it. Not a
+   * guaranteed cross-platform cancel deadline.
+   */
   timeout?: number;
   /** Requirement for local user verification during authentication. */
   userVerification?: "required" | "preferred" | "discouraged";
@@ -217,7 +225,11 @@ export interface PublicKeyCredentialCreationOptionsJSON {
     /** COSE algorithm identifier accepted by the relying party. */
     alg: number;
   }[];
-  /** Optional ceremony timeout in milliseconds. */
+  /**
+   * Optional WebAuthn timeout hint in milliseconds. Android may forward this
+   * to Credential Manager; iOS AuthenticationServices ignores it. Not a
+   * guaranteed cross-platform cancel deadline.
+   */
   timeout?: number;
   /** Existing credentials that should not be registered again for this account. */
   excludeCredentials?: PublicKeyCredentialDescriptorJSON[];
@@ -250,7 +262,11 @@ export interface PublicKeyCredentialRequestOptionsJSON {
   rpId: string;
   /** Optional allow-list of credentials that may satisfy the request. */
   allowCredentials?: PublicKeyCredentialDescriptorJSON[];
-  /** Optional ceremony timeout in milliseconds. */
+  /**
+   * Optional WebAuthn timeout hint in milliseconds. Android may forward this
+   * to Credential Manager; iOS AuthenticationServices ignores it. Not a
+   * guaranteed cross-platform cancel deadline.
+   */
   timeout?: number;
   /** Requirement for local user verification during authentication. */
   userVerification?: UserVerificationRequirement;

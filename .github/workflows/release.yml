@@ -32,23 +32,25 @@ jobs:
           link-to-sdk: false
 
       - name: Install cargo-ndk
-        run: cargo install cargo-ndk --locked
+        run: cargo install cargo-ndk --version 4.1.2 --locked
 
       - name: Build Android Rust artifacts from the release commit
         env:
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
           RUST_ARTIFACT_SOURCE_COMMIT: ${{ github.sha }}
-        run: bash scripts/build-rust-artifacts.sh android
+        run: >
+          bash scripts/build-rust-artifacts.sh android
+          --artifacts-root "${{ runner.temp }}/trusted-android"
 
       - name: Upload immutable Android native artifacts
         uses: actions/upload-artifact@v4
         with:
           name: android-native-artifacts
-          # upload-artifact roots at the LCA of these paths (packages/module).
+          # upload-artifact roots at the LCA (trusted-android).
           include-hidden-files: true
           path: |
-            packages/module/android/src/main/jniLibs
-            packages/module/.rust-artifacts/android-native-artifacts.json
+            ${{ runner.temp }}/trusted-android/android/src/main/jniLibs
+            ${{ runner.temp }}/trusted-android/.rust-artifacts/android-native-artifacts.json
           if-no-files-found: error
           retention-days: 30
 
@@ -65,17 +67,19 @@ jobs:
       - name: Build Apple Rust artifacts from the release commit
         env:
           RUST_ARTIFACT_SOURCE_COMMIT: ${{ github.sha }}
-        run: bash scripts/build-rust-artifacts.sh apple
+        run: >
+          bash scripts/build-rust-artifacts.sh apple
+          --artifacts-root "${{ runner.temp }}/trusted-apple"
 
       - name: Upload immutable Apple native artifacts
         uses: actions/upload-artifact@v4
         with:
           name: apple-native-artifacts
-          # upload-artifact roots at the LCA of these paths (packages/module).
+          # upload-artifact roots at the LCA (trusted-apple).
           include-hidden-files: true
           path: |
-            packages/module/ios/rust
-            packages/module/.rust-artifacts/apple-native-artifacts.json
+            ${{ runner.temp }}/trusted-apple/ios/rust
+            ${{ runner.temp }}/trusted-apple/.rust-artifacts/apple-native-artifacts.json
           if-no-files-found: error
           retention-days: 30
 
@@ -103,7 +107,8 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: android-native-artifacts
-          # Artifact root is packages/module (upload-artifact LCA).
+          # Zip is rooted at trusted-android. Download into the package so
+          # jniLibs and .rust-artifacts land on their expected paths.
           path: packages/module
 
       - run: pnpm install --frozen-lockfile
@@ -132,7 +137,8 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: apple-native-artifacts
-          # Artifact root is packages/module (upload-artifact LCA).
+          # Zip is rooted at trusted-apple. Download into the package so
+          # ios/rust and .rust-artifacts land on their expected paths.
           path: packages/module
 
       - run: pnpm install --frozen-lockfile
@@ -141,47 +147,11 @@ jobs:
       - name: Smoke-test packed Apple native artifacts
         run: bash scripts/smoke-test-packaged-native-artifacts.sh --platform apple
 
-  check-native-artifact-drift:
-    name: Check committed native artifact drift
-    needs:
-      - build-android-native-artifacts
-      - build-apple-native-artifacts
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download immutable Android native artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: android-native-artifacts
-          path: ${{ runner.temp }}/trusted-android
-
-      - name: Download immutable Apple native artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: apple-native-artifacts
-          path: ${{ runner.temp }}/trusted-apple
-
-      - name: Compare committed Android natives to trusted build outputs
-        run: >
-          bash scripts/check-native-artifact-drift.sh
-          --committed-root packages/module
-          --generated-root "${{ runner.temp }}/trusted-android"
-          --platform android
-
-      - name: Compare committed Apple natives to trusted build outputs
-        run: >
-          bash scripts/check-native-artifact-drift.sh
-          --committed-root packages/module
-          --generated-root "${{ runner.temp }}/trusted-apple"
-          --platform apple
-
   release:
     name: Release
     needs:
       - smoke-android-native-artifacts
       - smoke-apple-native-artifacts
-      - check-native-artifact-drift
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -232,7 +202,6 @@ jobs:
       - run: pnpm rust:clippy
       - run: pnpm bindgen:check
       - run: pnpm check
-      - run: pnpm test:acceptance
       - run: pnpm verify:release-acceptance
       - run: pnpm build
       - run: pnpm pack:check
@@ -243,7 +212,12 @@ jobs:
 
       - name: Verify packed natives match release evidence
         run: |
-          TARBALL="$(ls "${{ runner.temp }}"/expo-easy-passkey-*.tgz | head -n 1)"
+          set -euo pipefail
+          TARBALL="$(find "${{ runner.temp }}" -maxdepth 1 -name 'expo-easy-passkey-*.tgz' | head -n 1)"
+          if [[ -z "$TARBALL" ]]; then
+            echo "npm pack did not produce expo-easy-passkey-*.tgz" >&2
+            exit 1
+          fi
           bash scripts/prepare-trusted-native-artifacts.sh \
             --verify-tarball "$TARBALL" \
             --evidence-output packages/module/.rust-artifacts/release-evidence.json

@@ -5,6 +5,11 @@ import type {
 } from "node:http";
 
 import app from "../src/index.js";
+import { errorResponse } from "../src/server/http.js";
+import {
+  RequestBodyTooLargeError,
+  readLimitedBody,
+} from "../src/server/request-body.js";
 
 const API_PATH_PREFIX = "/api";
 const BODYLESS_METHODS = new Set(["GET", "HEAD"]);
@@ -41,13 +46,7 @@ const readBody = async (
     return;
   }
 
-  const chunks: Buffer[] = [];
-
-  for await (const chunk of request) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-  }
-
-  const body = Buffer.concat(chunks);
+  const body = await readLimitedBody(request);
 
   return body.byteLength > 0 ? new Blob([new Uint8Array(body)]) : undefined;
 };
@@ -109,10 +108,19 @@ const handler = async (
   request: IncomingMessage,
   response: ServerResponse
 ): Promise<void> => {
-  await sendWebResponse(
-    await app.handle(await toWebRequest(request)),
-    response
-  );
+  try {
+    await sendWebResponse(
+      await app.handle(await toWebRequest(request)),
+      response
+    );
+  } catch (error) {
+    if (error instanceof RequestBodyTooLargeError) {
+      await sendWebResponse(errorResponse(error, 413), response);
+      return;
+    }
+
+    throw error;
+  }
 };
 
 export default handler;

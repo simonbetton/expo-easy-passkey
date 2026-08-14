@@ -14,10 +14,12 @@ ios
 !packages/module/android
 !packages/module/android/**
 packages/module/android/build/
+packages/module/android/src/main/jniLibs
 !packages/module/ios
 !packages/module/ios/**
 packages/module/ios/build/
-packages/module/.rust-artifacts/
+packages/module/ios/rust
+packages/module/.rust-artifacts
 node_modules
 target
 *.tsbuildinfo

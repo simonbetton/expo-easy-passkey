@@ -159,4 +159,31 @@ describe("demo ceremony store", () => {
       store.getCeremonyChallenge(ceremonyRef("authentication", activeId))
     ).toBe("active-challenge");
   });
+
+  it("allows only one claim per pending ceremony and restores the claim after release", () => {
+    const store = createDemoStore({
+      createCeremonyId: () => "registration-id",
+      now: () => 1000,
+    });
+    const ceremonyId = store.createCeremony(
+      "registration",
+      "demo-user",
+      "registration-challenge",
+      60_000
+    );
+    const ceremony = ceremonyRef("registration", ceremonyId);
+
+    expect(store.claimCeremony(ceremony)).toBe("registration-challenge");
+    expect(() => store.claimCeremony(ceremony)).toThrow(
+      "No matching passkey ceremony is pending."
+    );
+
+    store.releaseCeremony(ceremony);
+
+    expect(store.claimCeremony(ceremony)).toBe("registration-challenge");
+    store.consumeCeremony(ceremony, "registration-challenge");
+    expect(() => store.getCeremonyChallenge(ceremony)).toThrow(
+      "No matching passkey ceremony is pending."
+    );
+  });
 });

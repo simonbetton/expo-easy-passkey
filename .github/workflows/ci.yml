@@ -16,13 +16,12 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.89.0
       - run: pnpm install --frozen-lockfile
       - run: pnpm rust:fmt
       - run: pnpm rust:clippy
       - run: pnpm bindgen:check
       - run: pnpm check
-      - run: pnpm test:acceptance
       - run: pnpm verify:release-acceptance
       - run: pnpm build
 
@@ -30,6 +29,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Free disk space for Android + Rust cross-compiles
+        run: |
+          set -euo pipefail
+          df -h
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android/sdk/ndk
+          sudo rm -rf /usr/local/lib/android/sdk/system-images
+          sudo rm -rf /usr/local/lib/android/sdk/emulator
+          sudo rm -rf /opt/ghc /usr/local/.ghcup
+          sudo rm -rf /usr/share/swift
+          sudo rm -rf /usr/local/share/boost
+          sudo docker system prune -af || true
+          df -h
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -40,14 +52,38 @@ jobs:
           distribution: temurin
           java-version: 21
       - uses: android-actions/setup-android@v3
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.89.0
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+      - uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: r27c
+          link-to-sdk: false
+      - run: cargo install cargo-ndk --version 4.1.2 --locked
       - run: pnpm install --frozen-lockfile
+      - name: Build local Android native artifacts
+        env:
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+        run: pnpm build:rust-artifacts android
+      - run: pnpm --filter expo-easy-passkey build
+      - name: Smoke-test local Android native artifacts
+        env:
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+        run: pnpm smoke:native-artifacts --platform android
+      - name: Reclaim Rust target dir before Gradle
+        run: |
+          set -euo pipefail
+          rm -rf target
+          df -h
       - run: pnpm --filter @repo/example exec expo prebuild --platform android --no-install
       - run: pnpm test:native:android
+      # CI validates the app compile path on one ABI. Packaged natives still cover all ABIs above.
       - run: ./gradlew assembleDebug
         working-directory: apps/example/android
         env:
           NODE_ENV: development
+          ORG_GRADLE_PROJECT_reactNativeArchitectures: arm64-v8a
 
   ios-compile:
     runs-on: macos-26
@@ -58,8 +94,15 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.89.0
+        with:
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios
       - run: pnpm install --frozen-lockfile
+      - name: Build local Apple native artifacts
+        run: pnpm build:rust-artifacts apple
+      - run: pnpm --filter expo-easy-passkey build
+      - name: Smoke-test local Apple native artifacts
+        run: pnpm smoke:native-artifacts --platform apple
       - run: pnpm --filter @repo/example exec expo prebuild --platform ios --no-install
         env:
           NODE_ENV: development

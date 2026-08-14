@@ -2,32 +2,29 @@ package expo.modules.easypasskey
 
 import android.app.Activity
 import android.os.Build
-import androidx.credentials.CreatePublicKeyCredentialRequest
 import androidx.credentials.CreatePublicKeyCredentialResponse
-import androidx.credentials.CredentialManager
-import androidx.credentials.GetCredentialRequest
-import androidx.credentials.GetPublicKeyCredentialOption
 import androidx.credentials.PublicKeyCredential
 import androidx.credentials.exceptions.CreateCredentialCancellationException
 import androidx.credentials.exceptions.GetCredentialCancellationException
+import androidx.credentials.exceptions.NoCredentialException
+import androidx.credentials.exceptions.publickeycredential.CreatePublicKeyCredentialDomException
+import androidx.credentials.exceptions.publickeycredential.GetPublicKeyCredentialDomException
 import org.json.JSONArray
 import org.json.JSONObject
 
 class PasskeyCeremonyAdapter(
-  private val activity: Activity,
+  private val platformController: PasskeyPlatformController,
+  private val supported: Boolean = isSupported,
 ) {
-  private val credentialManager = CredentialManager.create(activity)
+  constructor(activity: Activity) : this(AndroidPasskeyPlatformController(activity))
 
   suspend fun create(request: PasskeyCreateRequest): Map<String, Any?> {
-    if (!isSupported) {
+    if (!supported) {
       throw PasskeyUnsupportedException()
     }
 
     try {
-      val response = credentialManager.createCredential(
-        context = activity,
-        request = CreatePublicKeyCredentialRequest(request.toCredentialManagerJson()),
-      )
+      val response = platformController.create(request.toCredentialManagerJson())
       val publicKeyResponse = response as? CreatePublicKeyCredentialResponse
         ?: throw PasskeyNativeException("Credential Manager returned an unsupported create response.")
 
@@ -42,16 +39,12 @@ class PasskeyCeremonyAdapter(
   }
 
   suspend fun get(request: PasskeyGetRequest): Map<String, Any?> {
-    if (!isSupported) {
+    if (!supported) {
       throw PasskeyUnsupportedException()
     }
 
     try {
-      val option = GetPublicKeyCredentialOption(request.toCredentialManagerJson())
-      val response = credentialManager.getCredential(
-        context = activity,
-        request = GetCredentialRequest(listOf(option)),
-      )
+      val response = platformController.get(request.toCredentialManagerJson())
       val credential = response.credential as? PublicKeyCredential
         ?: throw PasskeyNativeException("Credential Manager returned an unsupported get response.")
 
@@ -74,10 +67,10 @@ class PasskeyCeremonyAdapter(
 internal fun mapCredentialManagerError(error: Throwable, fallbackMessage: String): Throwable {
   val message = error.message ?: fallbackMessage
 
-  return when (error::class.java.simpleName) {
-    "NoCredentialException" -> PasskeyNoCredentialException(message)
-    "CreatePublicKeyCredentialDomException",
-    "GetPublicKeyCredentialDomException" -> PasskeyInvalidCredentialException(message)
+  return when (error) {
+    is NoCredentialException -> PasskeyNoCredentialException(message)
+    is CreatePublicKeyCredentialDomException,
+    is GetPublicKeyCredentialDomException -> PasskeyInvalidCredentialException(message)
     else -> PasskeyNativeException(message)
   }
 }

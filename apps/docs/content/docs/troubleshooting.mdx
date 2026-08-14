@@ -35,7 +35,7 @@ Check:
 - The app is not running in Expo Go.
 - The device has a supported OS version.
 - The device has screen lock, biometrics, or another user verification method enabled.
-- Android has a credential provider available.
+- Android has a credential provider available. On an emulator, sign in with a Google account and set a screen lock first.
 - The app is running on a real device for final testing.
 
 Show another sign-in method when this happens.
@@ -74,8 +74,8 @@ On Android, a native message like `No create options available` means Credential
 
 Common causes:
 
-- The device has no Google account or no enabled passkey-capable password manager account.
-- The device has no secure screen lock, such as PIN, pattern, password, or biometrics.
+- The device or emulator has no Google account or no enabled passkey-capable password manager account. Sign in on the Android emulator before testing passkeys.
+- The device or emulator has no secure screen lock, such as PIN, pattern, password, or biometrics.
 - The installed app does not match `assetlinks.json`, or the RP ID does not match the associated domain.
 - The registration options are malformed or incompatible with the available provider.
 

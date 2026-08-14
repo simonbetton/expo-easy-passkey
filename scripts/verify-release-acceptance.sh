@@ -64,6 +64,15 @@ require_contains() {
     fail "$relative must include release-blocking gate: $label"
 }
 
+require_absent() {
+  local relative="$1"
+  local needle="$2"
+  local label="${3:-$needle}"
+  if grep -Fq -- "$needle" "$ROOT_DIR/$relative"; then
+    fail "$relative must not include: $label"
+  fi
+}
+
 print_inventory() {
   cat <<'EOF'
 Cross-platform contract acceptance evidence
@@ -86,21 +95,23 @@ Regression coverage
   Web/SSR import and unsupported ceremony behavior
 
 Native adapter coverage (CI)
+- pnpm smoke:native-artifacts --platform android
+- pnpm smoke:native-artifacts --platform apple
 - pnpm test:native:android
 - pnpm test:native:ios
 
 Trusted release artifact coverage
 - .github/workflows/release.yml build-*-native-artifacts jobs
+- isolated runner temp roots for trusted build outputs
 - .github/workflows/release.yml smoke-*-native-artifacts jobs
-- .github/workflows/release.yml check-native-artifact-drift job
 - prepare-trusted-native-artifacts + packed tarball evidence verification
 
 Publication blockers
-- pnpm check (includes contract, ceremony, and web import suites)
-- pnpm test:acceptance
+- pnpm check (owns contract, ceremony, and web import Jest suites)
 - pnpm verify:release-acceptance
 - pnpm pack:check
-- trusted native smoke / drift / exact-artifact staging failures
+- local pnpm test:acceptance remains the focused acceptance subset
+- trusted native smoke / exact-artifact staging failures
 
 Required real-device evidence (Device E2E)
 - Association files (AASA / Digital Asset Links)
@@ -131,34 +142,64 @@ require_file "apps/docs/content/docs/releasing.mdx"
 require_file "apps/docs/content/docs/manual-e2e.mdx"
 require_file "apps/docs/content/docs/testing.mdx"
 require_file "package.json"
+require_file "packages/module/package.json"
+require_file "scripts/build-rust-artifacts.sh"
 
 require_contains "package.json" '"check"' "pnpm check script"
 require_contains "package.json" '"test:acceptance"' "pnpm test:acceptance script"
 require_contains "package.json" '"verify:release-acceptance"' "pnpm verify:release-acceptance script"
 
+require_contains "packages/module/package.json" '"name": "expo-easy-passkey"' "unscoped npm package name"
+require_contains "packages/module/package.json" '"access": "public"' "public npm access"
+require_contains "packages/module/package.json" '"provenance": true' "npm provenance"
+
+require_contains "scripts/build-rust-artifacts.sh" "--artifacts-root" "build script honors isolated artifact roots"
+
 require_contains ".github/workflows/ci.yml" "pnpm check" "CI contract suite via pnpm check"
-require_contains ".github/workflows/ci.yml" "pnpm test:acceptance" "CI named acceptance suite"
+require_absent ".github/workflows/ci.yml" "pnpm test:acceptance" "duplicate CI acceptance Jest run"
 require_contains ".github/workflows/ci.yml" "pnpm verify:release-acceptance" "CI acceptance-plan verification"
+require_contains ".github/workflows/ci.yml" "pnpm build:rust-artifacts android" "CI Android native artifact build"
+require_contains ".github/workflows/ci.yml" "pnpm build:rust-artifacts apple" "CI Apple native artifact build"
+require_contains ".github/workflows/ci.yml" "pnpm smoke:native-artifacts --platform android" "CI Android packaged-native smoke"
+require_contains ".github/workflows/ci.yml" "pnpm smoke:native-artifacts --platform apple" "CI Apple packaged-native smoke"
+require_contains ".github/workflows/ci.yml" "Free disk space for Android + Rust cross-compiles" "CI Android free-disk step"
+require_contains ".github/workflows/ci.yml" "Reclaim Rust target dir before Gradle" "CI Android reclaim Rust target before Gradle"
+require_contains ".github/workflows/ci.yml" "ORG_GRADLE_PROJECT_reactNativeArchitectures: arm64-v8a" "CI Android single-ABI Gradle assemble"
 require_contains ".github/workflows/ci.yml" "pnpm test:native:android" "CI Android native policy coverage"
 require_contains ".github/workflows/ci.yml" "pnpm test:native:ios" "CI iOS native policy coverage"
+require_contains ".github/workflows/ci.yml" "ExpoEasyPasskeyExample.xcworkspace" "CI iOS workspace from example app name"
+require_contains ".github/workflows/ci.yml" "dtolnay/rust-toolchain@1.89.0" "CI pins the same Rust toolchain as release"
 
+require_contains ".github/workflows/release.yml" "id-token: write" "npm provenance OIDC permission"
+require_contains ".github/workflows/release.yml" "registry-url: https://registry.npmjs.org" "publish to the public npm registry"
 require_contains ".github/workflows/release.yml" "build-android-native-artifacts" "trusted Android artifact build"
 require_contains ".github/workflows/release.yml" "build-apple-native-artifacts" "trusted Apple artifact build"
+require_contains ".github/workflows/release.yml" '--artifacts-root "${{ runner.temp }}/trusted-android"' "isolated trusted Android build root"
+require_contains ".github/workflows/release.yml" '--artifacts-root "${{ runner.temp }}/trusted-apple"' "isolated trusted Apple build root"
 require_contains ".github/workflows/release.yml" "smoke-android-native-artifacts" "Android packaged-target / FFI smoke"
 require_contains ".github/workflows/release.yml" "smoke-apple-native-artifacts" "Apple packaged-target / FFI smoke"
-require_contains ".github/workflows/release.yml" "check-native-artifact-drift" "committed vs trusted artifact drift check"
 require_contains ".github/workflows/release.yml" "prepare-trusted-native-artifacts.sh" "exact-artifact publication staging"
 require_contains ".github/workflows/release.yml" "- run: pnpm check" "release contract/web import gate"
-require_contains ".github/workflows/release.yml" "pnpm test:acceptance" "release named acceptance suite"
+require_absent ".github/workflows/release.yml" "pnpm test:acceptance" "duplicate release acceptance Jest run"
 require_contains ".github/workflows/release.yml" "pnpm verify:release-acceptance" "release acceptance-plan verification"
 require_contains ".github/workflows/release.yml" "pnpm pack:check" "release pack inspection gate"
 require_contains ".github/workflows/release.yml" "Verify packed natives match release evidence" "packed tarball identity check"
+require_contains ".github/workflows/release.yml" "expo-easy-passkey-*.tgz" "packed tarball matches the npm package name"
+require_contains ".github/workflows/release.yml" "secrets.NPM_TOKEN" "npm publish token"
+
+require_absent "packages/module/package.json" "npm.pkg.github.com" "GitHub Packages registry on an unscoped package"
+require_absent ".github/workflows/release.yml" "npm.pkg.github.com" "GitHub Packages publish target"
+require_absent ".github/workflows/release.yml" "houseofdoge-passkey-client" "foreign tarball glob"
+require_absent ".github/workflows/ci.yml" "PasskeyClientExample" "rebranded iOS workspace that prebuild does not generate"
+require_absent "apps/docs/content/docs/releasing.mdx" "A drift job compares the committed package natives" "committed-native drift as a release gate"
 
 require_contains "apps/docs/content/docs/testing.mdx" "Acceptance plan" "testing acceptance plan"
 require_contains "apps/docs/content/docs/releasing.mdx" "Release evidence" "releasing evidence review"
 require_contains "apps/docs/content/docs/releasing.mdx" "association" "association real-device evidence"
 require_contains "apps/docs/content/docs/releasing.mdx" "user verification" "user verification real-device evidence"
 require_contains "apps/docs/content/docs/releasing.mdx" "response shapes" "compatibility for response shapes"
+require_contains "apps/docs/content/docs/releasing.mdx" "isolated runner temp roots" "isolated trusted build outputs"
+require_contains "apps/docs/content/docs/releasing.mdx" "id-token: write" "documented npm provenance permission"
 require_contains "apps/docs/content/docs/manual-e2e.mdx" "Release notes" "device evidence recording"
 
 echo "OK: cross-platform contract acceptance plan is release-blocking"

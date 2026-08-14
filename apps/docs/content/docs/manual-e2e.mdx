@@ -17,7 +17,7 @@ Maintainers should complete this checklist before merging a release PR. Then fol
 - Android `assetlinks.json` hosted at `/.well-known/assetlinks.json`.
 - The app build signed with the certificate fingerprints listed in `assetlinks.json`.
 - The server expected-origin allowlist contains the HTTPS origin and each trusted certificate's `android:apk-key-hash:` origin.
-- A physical iOS or Android device with screen lock and passkeys enabled.
+- A physical iOS or Android device with screen lock and passkeys enabled. For local Android emulator work before device E2E, sign in with a Google account and set a screen lock so Credential Manager can create and assert passkeys.
 
 ## Builds
 

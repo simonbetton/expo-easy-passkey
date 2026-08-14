@@ -226,5 +226,66 @@ describe("passkey ceremony service", () => {
     expect(results.filter(({ status }) => status === "rejected")).toHaveLength(
       1
     );
+    expect(store.getUserPasskeys()).toHaveLength(1);
+    expect(store.getPasskey("new-credential")).toMatchObject({
+      credentialId: "new-credential",
+    });
+  });
+
+  it("updates the sign counter at most once for concurrent authentication verifies", async () => {
+    const store = createDemoStore({
+      createCeremonyId: () => "authentication-id",
+    });
+    store.savePasskey({
+      backedUp: false,
+      counter: 0,
+      credentialId: "existing-credential",
+      deviceType: "singleDevice",
+      publicKey: new Uint8Array([1, 2, 3]),
+      transports: ["internal"],
+      userId: store.getUser().id,
+      webAuthnUserId: "demo-user",
+    });
+    const dependencies = {
+      generateAuthenticationOptions: jest.fn(() =>
+        Promise.resolve({
+          challenge: "authentication-challenge",
+        })
+      ),
+      generateRegistrationOptions: jest.fn(),
+      verifyAuthenticationResponse: jest.fn(() =>
+        Promise.resolve(authenticationVerification)
+      ),
+      verifyRegistrationResponse: jest.fn(),
+    };
+    const service = createPasskeyService(store, dependencies as never);
+    const authentication = await service.getAuthenticationOptions();
+    const request = {
+      ceremonyId: authentication.ceremonyId,
+      response: authenticationResponse("existing-credential"),
+    };
+
+    const results = await Promise.allSettled([
+      service.verifyAuthentication(request),
+      service.verifyAuthentication(request),
+    ]);
+
+    expect(results.filter(({ status }) => status === "fulfilled")).toHaveLength(
+      1
+    );
+    expect(results.filter(({ status }) => status === "rejected")).toHaveLength(
+      1
+    );
+    expect(store.getPasskey("existing-credential")?.counter).toBe(1);
+    const fulfilled = results.find((result) => result.status === "fulfilled");
+    expect(fulfilled).toMatchObject({
+      value: {
+        session: {
+          credentialId: "existing-credential",
+          token: "demo-session-token",
+        },
+        verified: true,
+      },
+    });
   });
 });

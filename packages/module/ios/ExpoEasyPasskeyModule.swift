@@ -51,12 +51,10 @@ public class ExpoEasyPasskeyModule: Module {
 
   @MainActor
   private func makeCeremonyAdapter() throws -> ExpoEasyPasskeyCeremonyAdapter {
-    guard let viewController = appContext?.utilities?.currentViewController() else {
-      throw PasskeyMissingPresentationContextException()
-    }
+    let window = try PasskeyPresentationAnchor.resolve(
+      from: appContext?.utilities?.currentViewController()
+    )
 
-    return ExpoEasyPasskeyCeremonyAdapter(presentationAnchorProvider: {
-      viewController.view.window ?? UIWindow()
-    })
+    return ExpoEasyPasskeyCeremonyAdapter(presentationAnchorProvider: { window })
   }
 }
