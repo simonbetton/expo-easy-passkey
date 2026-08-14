@@ -16,14 +16,24 @@ pass() {
 
 [[ -x "$SCRIPT" ]] || fail "expected executable build script at $SCRIPT"
 
-if "$SCRIPT" --help >/dev/null; then
-  fail "help should exit non-zero via usage()"
-fi
-pass "help documents platform selection"
+help_output="$("$SCRIPT" --help 2>&1)" && fail "help should exit non-zero via usage()"
+printf '%s\n' "$help_output" | grep -q -- "--artifacts-root" ||
+  fail "help should document --artifacts-root"
+pass "help documents platform selection and --artifacts-root"
 
-if "$SCRIPT" windows >/dev/null; then
+if "$SCRIPT" windows >/dev/null 2>&1; then
   fail "unsupported platform should fail"
 fi
 pass "unsupported platform fails before building"
+
+if "$SCRIPT" android --nope >/dev/null 2>&1; then
+  fail "unknown flag should fail before building"
+fi
+pass "unknown flags fail before building"
+
+if "$SCRIPT" --artifacts-root >/dev/null 2>&1; then
+  fail "missing --artifacts-root value should fail"
+fi
+pass "missing --artifacts-root value fails before building"
 
 echo "All build-rust-artifacts CLI seam tests passed."

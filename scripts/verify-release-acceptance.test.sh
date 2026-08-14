@@ -40,9 +40,12 @@ pass "repository acceptance gates are wired"
 
 mkdir -p "$FIXTURE_ROOT/.github/workflows" "$FIXTURE_ROOT/packages/module/src" \
   "$FIXTURE_ROOT/apps/example-backend/src/server" \
-  "$FIXTURE_ROOT/apps/docs/content/docs"
+  "$FIXTURE_ROOT/apps/docs/content/docs" \
+  "$FIXTURE_ROOT/scripts"
 cp "$ROOT_DIR/.github/workflows/ci.yml" "$FIXTURE_ROOT/.github/workflows/ci.yml"
 cp "$ROOT_DIR/.github/workflows/release.yml" "$FIXTURE_ROOT/.github/workflows/release.yml"
+cp "$ROOT_DIR/packages/module/package.json" "$FIXTURE_ROOT/packages/module/package.json"
+cp "$ROOT_DIR/scripts/build-rust-artifacts.sh" "$FIXTURE_ROOT/scripts/build-rust-artifacts.sh"
 cp "$ROOT_DIR/packages/module/src/contract.acceptance.test.ts" \
   "$FIXTURE_ROOT/packages/module/src/contract.acceptance.test.ts"
 cp "$ROOT_DIR/packages/module/src/unsupported.runtime.test.ts" \
