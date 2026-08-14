@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Build packageable native Rust artifacts from the committed lockfile.
-# Outputs land under packages/module and are accompanied by release metadata.
+# Outputs land under --artifacts-root (default: packages/module) with release metadata.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -9,36 +9,59 @@ PACKAGE_DIR="$ROOT_DIR/packages/module"
 CRATE="expo-easy-passkey-ffi"
 LIB_NAME="libexpo_easy_passkey_ffi"
 METADATA_SCRIPT="$ROOT_DIR/scripts/record-rust-artifact-metadata.sh"
+CARGO_NDK_INSTALL="cargo install cargo-ndk --version 4.1.2 --locked"
 
-ANDROID_OUT="$PACKAGE_DIR/android/src/main/jniLibs"
-IOS_RUST_DIR="$PACKAGE_DIR/ios/rust"
-IOS_XCFRAMEWORK="$IOS_RUST_DIR/ExpoEasyPasskeyFfi.xcframework"
-IOS_HEADERS_DIR="$TARGET_DIR/expo-easy-passkey-ffi-headers"
-IOS_SIM_DIR="$TARGET_DIR/expo-easy-passkey-ffi-ios-simulator"
-METADATA_DIR="${RUST_ARTIFACT_METADATA_DIR:-$PACKAGE_DIR/.rust-artifacts}"
-
-PLATFORM="${1:-all}"
+PLATFORM="all"
+ARTIFACTS_ROOT=""
 
 usage() {
   cat <<'EOF' >&2
-Usage: build-rust-artifacts.sh [android|apple|all]
+Usage: build-rust-artifacts.sh [android|apple|all] [--artifacts-root <dir>]
 
 Builds native Rust artifacts from the release commit's Cargo.lock (--locked)
-into packages/module, then records immutable artifact metadata.
+into --artifacts-root (default: packages/module), then records immutable
+artifact metadata. UniFFI headers are always read from packages/module.
 EOF
   exit 2
 }
 
-case "$PLATFORM" in
-  android | apple | all) ;;
-  -h | --help)
-    usage
-    ;;
-  *)
-    echo "Unsupported platform: $PLATFORM" >&2
-    usage
-    ;;
-esac
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    android | apple | all)
+      PLATFORM="$1"
+      shift
+      ;;
+    --artifacts-root)
+      if [[ $# -lt 2 || -z "${2}" ]]; then
+        echo "--artifacts-root requires a directory" >&2
+        usage
+      fi
+      ARTIFACTS_ROOT="$2"
+      shift 2
+      ;;
+    -h | --help)
+      usage
+      ;;
+    *)
+      echo "Unknown argument: $1" >&2
+      usage
+      ;;
+  esac
+done
+
+if [[ -z "$ARTIFACTS_ROOT" ]]; then
+  ARTIFACTS_ROOT="$PACKAGE_DIR"
+else
+  mkdir -p "$ARTIFACTS_ROOT"
+  ARTIFACTS_ROOT="$(cd "$ARTIFACTS_ROOT" && pwd)"
+fi
+
+ANDROID_OUT="$ARTIFACTS_ROOT/android/src/main/jniLibs"
+IOS_RUST_DIR="$ARTIFACTS_ROOT/ios/rust"
+IOS_XCFRAMEWORK="$IOS_RUST_DIR/ExpoEasyPasskeyFfi.xcframework"
+IOS_HEADERS_DIR="$TARGET_DIR/expo-easy-passkey-ffi-headers"
+IOS_SIM_DIR="$TARGET_DIR/expo-easy-passkey-ffi-ios-simulator"
+METADATA_DIR="${RUST_ARTIFACT_METADATA_DIR:-$ARTIFACTS_ROOT/.rust-artifacts}"
 
 require_command() {
   if ! command -v "$1" >/dev/null 2>&1; then
@@ -56,7 +79,7 @@ SOURCE_COMMIT="${RUST_ARTIFACT_SOURCE_COMMIT:-$(git -C "$ROOT_DIR" rev-parse HEA
 build_android() {
   if ! cargo ndk --version >/dev/null 2>&1; then
     echo "Missing required Cargo subcommand: cargo-ndk" >&2
-    echo "Install it with: cargo install cargo-ndk" >&2
+    echo "Install it with: $CARGO_NDK_INSTALL" >&2
     exit 1
   fi
 
@@ -128,7 +151,7 @@ record_metadata() {
   local platform="$1"
   mkdir -p "$METADATA_DIR"
   "$METADATA_SCRIPT" \
-    --artifacts-root "$PACKAGE_DIR" \
+    --artifacts-root "$ARTIFACTS_ROOT" \
     --platform "$platform" \
     --source-commit "$SOURCE_COMMIT" \
     --lockfile "$ROOT_DIR/Cargo.lock" \

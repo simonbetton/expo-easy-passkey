@@ -155,6 +155,8 @@ Expo Go also cannot load this native module. Import and capability checks succee
 
 ## Device testing
 
-Final passkey testing needs real devices. Simulators and emulators may not match platform account, biometric, or credential provider behavior.
+Final passkey testing needs real devices. iOS Simulator and Android emulator behavior can still differ from physical devices for biometrics and some credential-provider edge cases.
 
-When something fails, check association first. A bad AASA file, stale Android fingerprint, or mismatched `rp.id` can stop the system passkey UI before your JavaScript receives a useful response. For Android registration, also verify that the device has a secure screen lock and an enabled credential provider with an account that can save passkeys.
+For Android emulator development, sign in with a Google account and set a screen lock (PIN, pattern, or password) before creating or asserting passkeys. Credential Manager needs that account (or another enabled passkey-capable password manager); without it registration often fails with `No create options available`.
+
+When something fails, check association first. A bad AASA file, stale Android fingerprint, or mismatched `rp.id` can stop the system passkey UI before your JavaScript receives a useful response. For Android registration, also verify that the device or emulator has a secure screen lock and an enabled credential provider with an account that can save passkeys.

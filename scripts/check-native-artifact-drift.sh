@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Detect drift between committed native binaries and independently generated
-# trusted outputs. Committed files are never treated as release evidence.
+# Compare two native artifact trees (for example a local build vs a downloaded
+# trusted output). Publication never uses checkout binaries as release evidence.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -27,8 +27,9 @@ Usage: check-native-artifact-drift.sh \
   --generated-root <dir> \
   --platform <android|apple|all>
 
-Compares required native artifact checksums between committed repository
-binaries and independently generated trusted outputs. Exits non-zero on drift.
+Compares required native artifact checksums between two artifact trees
+(--committed-root vs --generated-root). Exits non-zero on drift. Native
+outputs are gitignored; this is a local comparison helper, not a release gate.
 EOF
   exit 2
 }
@@ -123,8 +124,8 @@ while IFS='|' read -r target_id relative_path; do
 done < <(collect_targets "$PLATFORM")
 
 if [[ "$drift" -ne 0 ]]; then
-  echo "Committed native binaries drifted from independently generated trusted outputs." >&2
-  echo "Update committed binaries for local/dev use; release publication must still consume trusted CI artifacts." >&2
+  echo "Native artifact trees drifted." >&2
+  echo "Rebuild local natives with pnpm build:rust-artifacts; release publication still consumes trusted CI artifacts." >&2
   exit 1
 fi
 
