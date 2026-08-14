@@ -79,6 +79,7 @@ describe("withExpoEasyPasskey", () => {
     ["example.com/login"],
     ["example.com:443"],
     ["user@example.com"],
+    ["example.com?mode=developer"],
   ])("rejects invalid domain %s during prebuild", (domain) => {
     expect(() => withExpoEasyPasskey({}, { domains: [domain] })).toThrow(
       `Invalid Expo Easy Passkey plugin domain "${domain}": Relying Party domains must be hostnames without scheme, path, or port.`
