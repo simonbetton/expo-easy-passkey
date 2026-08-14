@@ -29,9 +29,7 @@
       [
         "expo-easy-passkey",
         {
-          "domains": [
-            "expo-easy-passkey-example-backend.vercel.app"
-          ]
+          "domains": ["expo-easy-passkey-example-backend.vercel.app"]
         }
       ]
     ]
