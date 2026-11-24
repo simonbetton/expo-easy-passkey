@@ -21,7 +21,7 @@ export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
     notFound();
   }
 
-  const MDX = page.data.body;
+  const MdxContent = page.data.body;
   const markdownUrl = getPageMarkdownUrl(page).url;
 
   return (
@@ -35,7 +35,7 @@ export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
         <ViewOptionsPopover markdownUrl={markdownUrl} />
       </div>
       <DocsBody>
-        <MDX
+        <MdxContent
           components={getMDXComponents({
             // This allows links to other pages with relative file paths.
             a: createRelativeLink(source, page),

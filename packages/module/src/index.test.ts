@@ -101,7 +101,7 @@ describe("expo-easy-passkey", () => {
           .trim()
           .replaceAll("+", "-")
           .replaceAll("/", "_")
-          .replace(/=+$/u, "")
+          .replace(/[=]+$/u, "")
       )
     );
     nativeModule.validateRelyingPartyId.mockImplementation((rpId: string) =>

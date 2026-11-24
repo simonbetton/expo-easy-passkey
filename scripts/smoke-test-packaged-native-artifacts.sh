@@ -13,10 +13,10 @@ SKIP_PACK=0
 SKIP_FFI=0
 
 ANDROID_ABIS=(
-  "arm64-v8a|ARM aarch64|ELF.*shared object"
-  "armeabi-v7a|ARM,|ELF.*shared object"
-  "x86|80386|ELF.*shared object"
-  "x86_64|x86-64|ELF.*shared object"
+  "arm64-v8a;ARM aarch64;ELF.*shared object"
+  "armeabi-v7a;ARM,;ELF.*shared object"
+  "x86;Intel (80|i)386,;ELF.*shared object"
+  "x86_64;x86-64;ELF.*shared object"
 )
 
 usage() {
@@ -114,7 +114,7 @@ inspect_android() {
   local root="$1"
   local abi expected_arch expected_kind path description
   for entry in "${ANDROID_ABIS[@]}"; do
-    IFS='|' read -r abi expected_arch expected_kind <<<"$entry"
+    IFS=';' read -r abi expected_arch expected_kind <<<"$entry"
     path="$root/android/src/main/jniLibs/$abi/libexpo_easy_passkey_ffi.so"
     [[ -f "$path" ]] || {
       echo "Missing Android ABI library: $path" >&2

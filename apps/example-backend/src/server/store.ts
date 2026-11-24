@@ -1,9 +1,9 @@
 import { randomUUID } from "node:crypto";
 
 import type {
-  AuthenticatorTransportFuture,
   Base64URLString,
   CredentialDeviceType,
+  WebAuthnCredential,
 } from "@simplewebauthn/server";
 
 export interface DemoUser {
@@ -38,7 +38,7 @@ export interface StoredPasskey {
   credentialId: Base64URLString;
   deviceType: CredentialDeviceType;
   publicKey: Uint8Array;
-  transports?: AuthenticatorTransportFuture[];
+  transports?: WebAuthnCredential["transports"];
   userId: string;
   webAuthnUserId: Base64URLString;
 }
