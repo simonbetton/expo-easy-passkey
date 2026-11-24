@@ -170,6 +170,32 @@ if "$SCRIPT" \
 fi
 pass "mismatched Android library format fails"
 
+# Exercise both libmagic spellings for the 32-bit Intel ELF machine type.
+x86_fixture="$FIXTURE_ROOT/x86-architecture"
+make_android_tree "$x86_fixture"
+record_metadata "$x86_fixture" android "$x86_fixture/.rust-artifacts/android-native-artifacts.json"
+mkdir "$FIXTURE_ROOT/bin"
+cat >"$FIXTURE_ROOT/bin/file" <<'EOF'
+#!/usr/bin/env bash
+case "$2" in
+  */arm64-v8a/*) echo 'ELF 64-bit LSB shared object, ARM aarch64, version 1' ;;
+  */armeabi-v7a/*) echo 'ELF 32-bit LSB shared object, ARM, EABI5 version 1' ;;
+  */x86/*) echo "ELF 32-bit LSB shared object, $TEST_X86_MACHINE, version 1" ;;
+  */x86_64/*) echo 'ELF 64-bit LSB shared object, x86-64, version 1' ;;
+  *) exit 1 ;;
+esac
+EOF
+chmod +x "$FIXTURE_ROOT/bin/file"
+x86_smoke_args=(--platform android --package-dir "$x86_fixture" --skip-pack --skip-ffi)
+for machine in "Intel 80386" "Intel i386"; do
+  PATH="$FIXTURE_ROOT/bin:$PATH" TEST_X86_MACHINE="$machine" "$SCRIPT" "${x86_smoke_args[@]}" \
+    || fail "x86 inspection should accept $machine"
+done
+if PATH="$FIXTURE_ROOT/bin:$PATH" TEST_X86_MACHINE="x86-64" "$SCRIPT" "${x86_smoke_args[@]}"; then
+  fail "x86 inspection should reject an x86-64 machine type"
+fi
+pass "x86 inspection accepts both Intel spellings and rejects x86-64"
+
 # Missing Apple slice fails
 missing_apple="$FIXTURE_ROOT/missing-apple"
 make_apple_tree "$missing_apple"
