@@ -133,12 +133,16 @@ export default function App() {
           <Button
             disabled={!availability.supported}
             title="Register passkey"
-            onPress={() => void run("create")}
+            onPress={() => {
+              run("create");
+            }}
           />
           <Button
             disabled={!availability.supported}
             title="Authenticate"
-            onPress={() => void run("get")}
+            onPress={() => {
+              run("get");
+            }}
           />
         </View>
         <Text style={styles.output}>{output}</Text>

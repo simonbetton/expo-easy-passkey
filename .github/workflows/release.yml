@@ -39,8 +39,7 @@ jobs:
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
           RUST_ARTIFACT_SOURCE_COMMIT: ${{ github.sha }}
         run: >
-          bash scripts/build-rust-artifacts.sh android
-          --artifacts-root "${{ runner.temp }}/trusted-android"
+          bash scripts/build-rust-artifacts.sh android --artifacts-root "${{ runner.temp }}/trusted-android"
 
       - name: Upload immutable Android native artifacts
         uses: actions/upload-artifact@v4
@@ -68,8 +67,7 @@ jobs:
         env:
           RUST_ARTIFACT_SOURCE_COMMIT: ${{ github.sha }}
         run: >
-          bash scripts/build-rust-artifacts.sh apple
-          --artifacts-root "${{ runner.temp }}/trusted-apple"
+          bash scripts/build-rust-artifacts.sh apple --artifacts-root "${{ runner.temp }}/trusted-apple"
 
       - name: Upload immutable Apple native artifacts
         uses: actions/upload-artifact@v4
@@ -181,12 +179,7 @@ jobs:
 
       - name: Stage trusted natives for publication
         run: >
-          bash scripts/prepare-trusted-native-artifacts.sh
-          --package-dir packages/module
-          --android-from "${{ runner.temp }}/trusted-android"
-          --apple-from "${{ runner.temp }}/trusted-apple"
-          --expected-source-commit "${{ github.sha }}"
-          --evidence-output packages/module/.rust-artifacts/release-evidence.json
+          bash scripts/prepare-trusted-native-artifacts.sh --package-dir packages/module --android-from "${{ runner.temp }}/trusted-android" --apple-from "${{ runner.temp }}/trusted-apple" --expected-source-commit "${{ github.sha }}" --evidence-output packages/module/.rust-artifacts/release-evidence.json
 
       - name: Upload release evidence
         uses: actions/upload-artifact@v4

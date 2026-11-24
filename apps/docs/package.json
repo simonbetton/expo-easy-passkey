@@ -13,24 +13,24 @@
     "types:check": "fumadocs-mdx && next typegen && tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "fumadocs-core": "^16.10.7",
-    "fumadocs-mdx": "^15.0.13",
-    "fumadocs-typescript": "^5.2.7",
-    "fumadocs-ui": "^16.10.7",
-    "lucide-react": "^1.22.0",
-    "next": "^16.2.9",
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7"
+    "fumadocs-core": "^16.19.7",
+    "fumadocs-mdx": "^15.6.4",
+    "fumadocs-typescript": "^5.6.2",
+    "fumadocs-ui": "^16.19.7",
+    "lucide-react": "^1.78.0",
+    "next": "^16.4.6",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.3.2",
+    "@tailwindcss/postcss": "^4.3.5",
     "@types/mdx": "^2.0.14",
-    "@types/node": "^26.0.1",
-    "@types/react": "^19.2.17",
-    "@types/react-dom": "^19.2.3",
-    "oxlint": "^1.72.0",
-    "postcss": "^8.5.16",
-    "tailwindcss": "^4.3.2",
-    "typescript": "^6.0.3"
+    "@types/node": "^26.6.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "oxlint": "^1.95.0",
+    "postcss": "^8.5.33",
+    "tailwindcss": "^4.3.5",
+    "typescript": "^7.0.2"
   }
 }

@@ -68,11 +68,11 @@
     "typecheck:test": "pnpm build && tsc -p tsconfig.test.json --noEmit"
   },
   "devDependencies": {
-    "@jest/globals": "^30.4.1",
-    "@simplewebauthn/server": "^13.3.2",
+    "@jest/globals": "^30.5.2",
+    "@simplewebauthn/server": "^14.1.0",
     "expo-module-scripts": "^56.0.3",
-    "expo-modules-core": "^57.0.1",
-    "typescript": "^6.0.3"
+    "expo-modules-core": "^58.1.0",
+    "typescript": "^7.0.2"
   },
   "peerDependencies": {
     "expo": "*",

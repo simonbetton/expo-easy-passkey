@@ -31,7 +31,7 @@ const nativeModule: jest.Mocked<ExpoEasyPasskeyNativeModule> = {
   isSupported: jest.fn<ExpoEasyPasskeyNativeModule["isSupported"]>(() => true),
   normalizeChallenge: jest.fn<
     ExpoEasyPasskeyNativeModule["normalizeChallenge"]
-  >((value) => Promise.resolve(value.replace(/=+$/u, ""))),
+  >((value) => Promise.resolve(value.replace(/[=]+$/u, ""))),
   validateRelyingPartyId: jest.fn<
     ExpoEasyPasskeyNativeModule["validateRelyingPartyId"]
   >((value) => Promise.resolve(value.toLowerCase())),
