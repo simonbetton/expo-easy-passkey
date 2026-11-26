@@ -19,9 +19,9 @@ jobs:
     name: Build Android native artifacts
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: dtolnay/rust-toolchain@1.89.0
+      - uses: dtolnay/rust-toolchain@1.100.0
         with:
           targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
 
@@ -42,7 +42,7 @@ jobs:
           bash scripts/build-rust-artifacts.sh android --artifacts-root "${{ runner.temp }}/trusted-android"
 
       - name: Upload immutable Android native artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: android-native-artifacts
           # upload-artifact roots at the LCA (trusted-android).
@@ -57,9 +57,9 @@ jobs:
     name: Build Apple native artifacts
     runs-on: macos-26
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: dtolnay/rust-toolchain@1.89.0
+      - uses: dtolnay/rust-toolchain@1.100.0
         with:
           targets: aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios
 
@@ -70,7 +70,7 @@ jobs:
           bash scripts/build-rust-artifacts.sh apple --artifacts-root "${{ runner.temp }}/trusted-apple"
 
       - name: Upload immutable Apple native artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: apple-native-artifacts
           # upload-artifact roots at the LCA (trusted-apple).
@@ -87,10 +87,10 @@ jobs:
       - build-android-native-artifacts
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: pnpm
@@ -102,7 +102,7 @@ jobs:
           link-to-sdk: false
 
       - name: Download immutable Android native artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: android-native-artifacts
           # Zip is rooted at trusted-android. Download into the package so
@@ -123,16 +123,16 @@ jobs:
       - build-apple-native-artifacts
     runs-on: macos-26
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: pnpm
 
       - name: Download immutable Apple native artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: apple-native-artifacts
           # Zip is rooted at trusted-apple. Download into the package so
@@ -152,27 +152,27 @@ jobs:
       - smoke-apple-native-artifacts
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: pnpm
           registry-url: https://registry.npmjs.org
 
-      - uses: dtolnay/rust-toolchain@1.89.0
+      - uses: dtolnay/rust-toolchain@1.100.0
 
       - name: Download immutable Android native artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: android-native-artifacts
           path: ${{ runner.temp }}/trusted-android
 
       - name: Download immutable Apple native artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: apple-native-artifacts
           path: ${{ runner.temp }}/trusted-apple
@@ -182,7 +182,7 @@ jobs:
           bash scripts/prepare-trusted-native-artifacts.sh --package-dir packages/module --android-from "${{ runner.temp }}/trusted-android" --apple-from "${{ runner.temp }}/trusted-apple" --expected-source-commit "${{ github.sha }}" --evidence-output packages/module/.rust-artifacts/release-evidence.json
 
       - name: Upload release evidence
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-native-evidence
           include-hidden-files: true
@@ -215,12 +215,12 @@ jobs:
             --verify-tarball "$TARBALL" \
             --evidence-output packages/module/.rust-artifacts/release-evidence.json
 
-      - uses: changesets/action@v1
+      - uses: changesets/action@v2
         with:
-          publish: pnpm release
-          version: pnpm version-packages
+          github-token: ${{ secrets.CHANGESETS_TOKEN || secrets.GITHUB_TOKEN }}
+          publish-script: pnpm release
+          version-script: pnpm version-packages
         env:
-          GITHUB_TOKEN: ${{ secrets.CHANGESETS_TOKEN || secrets.GITHUB_TOKEN }}
           LEFTHOOK: "0"
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

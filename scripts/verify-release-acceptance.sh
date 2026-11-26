@@ -168,7 +168,7 @@ require_contains ".github/workflows/ci.yml" "ORG_GRADLE_PROJECT_reactNativeArchi
 require_contains ".github/workflows/ci.yml" "pnpm test:native:android" "CI Android native policy coverage"
 require_contains ".github/workflows/ci.yml" "pnpm test:native:ios" "CI iOS native policy coverage"
 require_contains ".github/workflows/ci.yml" "ExpoEasyPasskeyExample.xcworkspace" "CI iOS workspace from example app name"
-require_contains ".github/workflows/ci.yml" "dtolnay/rust-toolchain@1.89.0" "CI pins the same Rust toolchain as release"
+require_contains ".github/workflows/ci.yml" "dtolnay/rust-toolchain@1.100.0" "CI pins the same Rust toolchain as release"
 
 require_contains ".github/workflows/release.yml" "id-token: write" "npm provenance OIDC permission"
 require_contains ".github/workflows/release.yml" "registry-url: https://registry.npmjs.org" "publish to the public npm registry"

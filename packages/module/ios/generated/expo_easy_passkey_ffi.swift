@@ -39,6 +39,74 @@ fileprivate extension ForeignBytes {
     init(bufferPointer: UnsafeBufferPointer<UInt8>) {
         self.init(len: Int32(bufferPointer.count), data: bufferPointer.baseAddress)
     }
+
+    init(rawBufferPointer: UnsafeRawBufferPointer) {
+        self.init(
+            len: Int32(rawBufferPointer.count),
+            data: rawBufferPointer.baseAddress?.assumingMemoryBound(to: UInt8.self)
+        )
+    }
+
+    init(mutableRawBufferPointer: UnsafeMutableRawBufferPointer) {
+        self.init(
+            len: Int32(mutableRawBufferPointer.count),
+            data: mutableRawBufferPointer.baseAddress?.assumingMemoryBound(to: UInt8.self)
+        )
+    }
+}
+
+// Converter for `&[u8]` / `[ByRef] bytes` arguments.
+//
+// Conforms to `FfiConverter` so the compiler enforces the full converter
+// method set. Only the scope-bound `lower(_:_body:)` overload is sound —
+// zero-copy byte buffers only flow foreign -> Rust, and only in argument
+// position. The four protocol-witness methods (`lift`, `lower`, `read`,
+// `write`) `fatalError` at runtime if anyone reaches them.
+//
+// The scope-bound `lower` takes a closure because the `ForeignBytes`
+// pointer is only guaranteed valid for the duration of
+// `Data.withUnsafeBytes`. Callers must run the full FFI call inside
+// the closure body.
+fileprivate enum FfiConverterByRefBytes: FfiConverter {
+    typealias SwiftType = Data
+    typealias FfiType = ForeignBytes
+
+    static func lower<R>(_ value: Data, _ body: (ForeignBytes) throws -> R) rethrows -> R {
+        return try value.withUnsafeBytes { rawBuf in
+            try body(ForeignBytes(rawBufferPointer: rawBuf))
+        }
+    }
+
+    static func lower(_ value: Data) -> ForeignBytes {
+        fatalError("ByRef bytes cannot use the plain lower: returning ForeignBytes escapes the Data.withUnsafeBytes scope. Use the scope-bound lower(_:_body:) overload instead.")
+    }
+
+    static func lift(_ value: ForeignBytes) throws -> Data {
+        fatalError("ByRef bytes cannot be lifted: zero-copy &[u8] only flows foreign->Rust")
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Data {
+        fatalError("ByRef bytes cannot be read from a buffer: zero-copy &[u8] is only supported in argument position, not nested in records/options/etc.")
+    }
+
+    static func write(_ value: Data, into buf: inout [UInt8]) {
+        fatalError("ByRef bytes cannot be written to a buffer: zero-copy &[u8] is only supported in argument position, not nested in records/options/etc.")
+    }
+}
+
+// Converter for `&mut [u8]` / `[ByMutRef] bytes` arguments.
+//
+// Zero-copy and foreign -> Rust only, like `FfiConverterByRefBytes`, but the
+// buffer is writable: Rust's writes through the pointer land directly in the
+// caller's `Data`. The scope-bound `lower(_:_body:)` takes the `Data` `inout`
+// and runs the full FFI call inside `withUnsafeMutableBytes`, whose pointer is
+// only valid for the closure's duration.
+fileprivate enum FfiConverterByMutRefBytes {
+    static func lower<R>(_ value: inout Data, _ body: (ForeignBytes) throws -> R) rethrows -> R {
+        return try value.withUnsafeMutableBytes { rawBuf in
+            try body(ForeignBytes(mutableRawBufferPointer: rawBuf))
+        }
+    }
 }
 
 // For every type used in the interface, we provide helper methods for conveniently
@@ -455,7 +523,11 @@ fileprivate struct FfiConverterString: FfiConverter {
             return String()
         }
         let bytes = UnsafeBufferPointer<UInt8>(start: value.data!, count: Int(value.len))
-        return String(bytes: bytes, encoding: String.Encoding.utf8)!
+        // Use Swift's native UTF-8 decoder; `String(bytes:encoding:.utf8)` goes
+        // through Foundation's NSString and silently strips a leading U+FEFF BOM.
+        // Invalid UTF-8 substitutes U+FFFD instead of trapping (unreachable
+        // given Rust's `String` invariant).
+        return String(decoding: bytes, as: UTF8.self)
     }
 
     public static func lower(_ value: String) -> RustBuffer {
@@ -471,7 +543,8 @@ fileprivate struct FfiConverterString: FfiConverter {
 
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> String {
         let len: Int32 = try readInt(&buf)
-        return String(bytes: try readBytes(&buf, count: Int(len)), encoding: String.Encoding.utf8)!
+        // See `lift` above for why we avoid Foundation's NSString-backed decoder here.
+        return String(decoding: try readBytes(&buf, count: Int(len)), as: UTF8.self)
     }
 
     public static func write(_ value: String, into buf: inout [UInt8]) {
@@ -543,12 +616,11 @@ public func FfiConverterTypeCeremonySummary_lift(_ buf: RustBuffer) throws -> Ce
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeCeremonySummary_lower(_ value: CeremonySummary) -> RustBuffer {
+@Sendable public func FfiConverterTypeCeremonySummary_lower(_ value: CeremonySummary) -> RustBuffer {
     return FfiConverterTypeCeremonySummary.lower(value)
 }
 
-// Note that we don't yet support `indirect` for enums.
-// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+
 
 public enum CeremonyKind: Equatable, Hashable {
     
@@ -609,13 +681,14 @@ public func FfiConverterTypeCeremonyKind_lift(_ buf: RustBuffer) throws -> Cerem
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeCeremonyKind_lower(_ value: CeremonyKind) -> RustBuffer {
+@Sendable public func FfiConverterTypeCeremonyKind_lower(_ value: CeremonyKind) -> RustBuffer {
     return FfiConverterTypeCeremonyKind.lower(value)
 }
 
 
 
-public enum FfiError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
+public 
+enum FfiError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
 
     
     
@@ -684,47 +757,52 @@ public func FfiConverterTypeFfiError_lift(_ buf: RustBuffer) throws -> FfiError 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeFfiError_lower(_ value: FfiError) -> RustBuffer {
+@Sendable public func FfiConverterTypeFfiError_lower(_ value: FfiError) -> RustBuffer {
     return FfiConverterTypeFfiError.lower(value)
 }
 public func describeCeremony(kind: CeremonyKind, challenge: String, rpId: String, origin: String)throws  -> CeremonySummary  {
     return try  FfiConverterTypeCeremonySummary_lift(try rustCallWithError(FfiConverterTypeFfiError_lift) {
+        uniffiCallStatus in
     uniffi_expo_easy_passkey_ffi_fn_func_describe_ceremony(
         FfiConverterTypeCeremonyKind_lower(kind),
         FfiConverterString.lower(challenge),
         FfiConverterString.lower(rpId),
-        FfiConverterString.lower(origin),$0
+        FfiConverterString.lower(origin),uniffiCallStatus
     )
 })
 }
 public func makeClientDataJson(kind: CeremonyKind, challenge: String, origin: String, crossOrigin: Bool)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeFfiError_lift) {
+        uniffiCallStatus in
     uniffi_expo_easy_passkey_ffi_fn_func_make_client_data_json(
         FfiConverterTypeCeremonyKind_lower(kind),
         FfiConverterString.lower(challenge),
         FfiConverterString.lower(origin),
-        FfiConverterBool.lower(crossOrigin),$0
+        FfiConverterBool.lower(crossOrigin),uniffiCallStatus
     )
 })
 }
 public func normalizeChallenge(challenge: String)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeFfiError_lift) {
+        uniffiCallStatus in
     uniffi_expo_easy_passkey_ffi_fn_func_normalize_challenge(
-        FfiConverterString.lower(challenge),$0
+        FfiConverterString.lower(challenge),uniffiCallStatus
     )
 })
 }
 public func validateCeremonyOrigin(origin: String)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeFfiError_lift) {
+        uniffiCallStatus in
     uniffi_expo_easy_passkey_ffi_fn_func_validate_ceremony_origin(
-        FfiConverterString.lower(origin),$0
+        FfiConverterString.lower(origin),uniffiCallStatus
     )
 })
 }
 public func validateRelyingPartyId(rpId: String)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeFfiError_lift) {
+        uniffiCallStatus in
     uniffi_expo_easy_passkey_ffi_fn_func_validate_relying_party_id(
-        FfiConverterString.lower(rpId),$0
+        FfiConverterString.lower(rpId),uniffiCallStatus
     )
 })
 }
@@ -738,25 +816,25 @@ private enum InitializationResult {
 // the code inside is only computed once.
 private let initializationResult: InitializationResult = {
     // Get the bindings contract version from our ComponentInterface
-    let bindings_contract_version = 30
+    let bindings_contract_version = 33
     // Get the scaffolding contract version by calling the into the dylib
     let scaffolding_contract_version = ffi_expo_easy_passkey_ffi_uniffi_contract_version()
     if bindings_contract_version != scaffolding_contract_version {
         return InitializationResult.contractVersionMismatch
     }
-    if (uniffi_expo_easy_passkey_ffi_checksum_func_describe_ceremony() != 3250) {
+    if (uniffi_expo_easy_passkey_ffi_checksum_func_describe_ceremony() != 49057) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_expo_easy_passkey_ffi_checksum_func_make_client_data_json() != 65373) {
+    if (uniffi_expo_easy_passkey_ffi_checksum_func_make_client_data_json() != 12462) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_expo_easy_passkey_ffi_checksum_func_normalize_challenge() != 20789) {
+    if (uniffi_expo_easy_passkey_ffi_checksum_func_normalize_challenge() != 1086) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_expo_easy_passkey_ffi_checksum_func_validate_ceremony_origin() != 63818) {
+    if (uniffi_expo_easy_passkey_ffi_checksum_func_validate_ceremony_origin() != 63300) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_expo_easy_passkey_ffi_checksum_func_validate_relying_party_id() != 34432) {
+    if (uniffi_expo_easy_passkey_ffi_checksum_func_validate_relying_party_id() != 65352) {
         return InitializationResult.apiChecksumMismatch
     }
 

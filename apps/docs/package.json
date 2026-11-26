@@ -17,7 +17,7 @@
     "fumadocs-mdx": "^15.6.4",
     "fumadocs-typescript": "^5.6.2",
     "fumadocs-ui": "^16.19.7",
-    "lucide-react": "^1.78.0",
+    "lucide-react": "^1.81.0",
     "next": "^16.4.6",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
@@ -25,8 +25,8 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.5",
     "@types/mdx": "^2.0.14",
-    "@types/node": "^26.6.6",
-    "@types/react": "^19.3.0",
+    "@types/node": "^26.6.11",
+    "@types/react": "^19.3.3",
     "@types/react-dom": "^19.3.0",
     "oxlint": "^1.95.0",
     "postcss": "^8.5.33",

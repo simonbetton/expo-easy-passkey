@@ -71,7 +71,7 @@
     "@jest/globals": "^30.5.2",
     "@simplewebauthn/server": "^14.1.0",
     "expo-module-scripts": "^56.0.3",
-    "expo-modules-core": "^58.1.0",
+    "expo-modules-core": "^58.2.0",
     "typescript": "^7.0.2"
   },
   "peerDependencies": {
