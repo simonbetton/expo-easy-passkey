@@ -2,3 +2,12 @@ packages:
   - "apps/*"
   - "packages/*"
   - "tooling/*"
+
+# pnpm 12 waits 24 hours before resolving a new release. The current Expo 58.1
+# line and several direct updates were published inside that window.
+minimumReleaseAge: 0
+
+allowBuilds:
+  "@parcel/watcher": true
+  esbuild: true
+  lefthook: true

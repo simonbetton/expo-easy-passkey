@@ -13,8 +13,8 @@ Human tutorials live in [README.md](README.md), [Testing](apps/docs/content/docs
 
 ## Toolchain
 
-- Node `>=24`, pnpm `>=10` (`packageManager` in root `package.json`)
-- Rust via rustup; CI pins `1.89.0`
+- Node `>=24`, pnpm `>=12` (`packageManager` in root `package.json`)
+- Rust via rustup; CI pins `1.100.0`
 - Android natives: `cargo-ndk` 4.1.2 and NDK r27c (`ANDROID_NDK_HOME`)
 - Apple natives: Xcode (`xcodebuild`, `lipo`)
 
