@@ -1,6 +1,6 @@
 {
   "name": "expo-easy-passkey",
-  "version": "0.0.0",
+  "version": "0.1.0-alpha.0",
   "description": "Passkey support for Expo apps with native iOS and Android ceremonies and a WebAuthn-compatible TypeScript API.",
   "keywords": [
     "expo",

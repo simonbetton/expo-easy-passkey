@@ -1,8 +1,4 @@
 {
   "mode": "pre",
-  "tag": "alpha",
-  "initialVersions": {
-    "expo-easy-passkey": "0.0.0"
-  },
-  "changesets": []
+  "tag": "alpha"
 }
